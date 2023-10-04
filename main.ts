@@ -54,7 +54,7 @@ class Mc {
 function generateScoreFromEditionSheet(
   sheet: GoogleAppsScript.Spreadsheet.Sheet
 ): EditionData {
-  const range = sheet.getRange(3, 2, sheet.getLastRow() - 1, 4);
+  const range = sheet.getRange(3, 2, 15, 4);
   const values = range.getValues();
 
   const data: EditionData = {};
@@ -82,6 +82,11 @@ function generateScoreFromEditionSheet(
 
   values.forEach((row) => {
     const [nickname1, score1, score2, nickname2] = row;
+
+    if (nickname1 == "" || nickname2 == "") {
+      Logger.log("Empty nickname");
+      Logger.log(row);
+    }
 
     updateMcScoreFromMatch(nickname1, score1, score2);
     updateMcScoreFromMatch(nickname2, score2, score1);
@@ -127,7 +132,7 @@ function updateLeaderboards(): void {
     mc.participations++;
   });
 
-  const ranking = Object.entries(mcData).sort(([, a], [, b]) => {
+  const ranking = Object.values(mcData).sort((a, b) => {
     if (a.totalScore != b.totalScore) {
       return b.totalScore - a.totalScore;
     } else if (a.perfectWins != b.perfectWins) {
@@ -141,19 +146,39 @@ function updateLeaderboards(): void {
     }
   });
 
-  ranking.map(([nickname, mc], index) => {
-    const sheet = ss.getSheetByName("Ranking");
+  function isDraw(mc1: Mc, mc2: Mc): boolean {
+    return (
+      mc1.totalScore == mc2.totalScore &&
+      mc1.perfectWins == mc2.perfectWins &&
+      mc1.editionsWon == mc2.editionsWon &&
+      mc1.participations == mc2.participations
+    );
+  }
+
+  let lastPosition = 1;
+  ranking.map((mc, index) => {
+    const sheet = ss.getSheetByName("Placar");
     if (!sheet) {
       return;
     }
 
-    const range = sheet.getRange(index + 2, 1, 1, 5);
+    // sheet
+    //   .getRange(1, 1, 1, 4)
+    //   .setValues([["Posição", "Vulgo", "Pontuação", "Vitórias 2x0"]]);
+
+    let currentPosition = lastPosition;
+    if (index > 0 && !isDraw(mc, ranking[index - 1])) {
+      currentPosition = lastPosition + 1;
+    }
+    lastPosition = currentPosition;
+
+    const range = sheet.getRange(index + 3, 1, 1, 5);
     range.setValues([
       [
-        nickname,
+        currentPosition,
+        mc.nickname,
         mc.totalScore,
         mc.perfectWins,
-        mc.editionsWon,
         mc.participations,
       ],
     ]);
