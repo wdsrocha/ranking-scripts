@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "start": "clasp push --watch"
+  },
   "dependencies": {
     "@types/google-apps-script": "^1.0.72"
   }
