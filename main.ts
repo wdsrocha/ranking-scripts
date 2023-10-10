@@ -3,7 +3,7 @@ function addNewEditionPage() {
   const templateSheet = ss.getSheetByName("Template");
   if (!templateSheet) {
     return SpreadsheetApp.getUi().alert(
-      "Falha ao criar nova edição",
+      "Falha ao criar nova rodada",
       'Não foi possível encontrar a página "Template". Certifique-se de que existe uma página com o nome "Template".',
       SpreadsheetApp.getUi().ButtonSet.OK
     );
@@ -12,7 +12,7 @@ function addNewEditionPage() {
   let lastEdition = 0;
   ss.getSheets().forEach((sheet) => {
     const name = sheet.getName();
-    if (name.startsWith("Edição")) {
+    if (name.startsWith("Rodada")) {
       const edition = parseInt(name.split(" ")[1]);
       if (edition > lastEdition) {
         lastEdition = edition;
@@ -21,7 +21,7 @@ function addNewEditionPage() {
   });
 
   const newEditionNumber = lastEdition + 1;
-  const editionName = `Edição ${newEditionNumber.toString().padStart(2, "0")}`;
+  const editionName = `Rodada ${newEditionNumber.toString().padStart(2, "0")}`;
   Logger.log(`Creating new edition: ${editionName}`);
   const newSheet = templateSheet.copyTo(ss).setName(editionName).showSheet();
   ss.setActiveSheet(newSheet);
@@ -101,7 +101,7 @@ function updateLeaderboards(): void {
   let data: EditionData = {};
   ss.getSheets().forEach((sheet) => {
     const name = sheet.getName();
-    if (name.startsWith("Edição")) {
+    if (name.startsWith("Rodada")) {
       data = generateScoreFromEditionSheet(sheet);
     }
   });
@@ -180,6 +180,107 @@ function updateLeaderboards(): void {
         mc.totalScore,
         mc.perfectWins,
         mc.participations,
+      ],
+    ]);
+  });
+}
+
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  // Or DocumentApp or FormApp.
+  ui.createMenu("Ações").addItem("Parse Tournament Sheet", "foo").addToUi();
+}
+
+function foo() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const seasonMatches: Match[] = [];
+
+  ss.getSheets().forEach((sheet) => {
+    const name = sheet.getName();
+    if (isTournamentSheetName(name)) {
+      seasonMatches.push(...parseTournamentSheet(sheet));
+    }
+  });
+
+  let players: Record<string, Player> = {};
+
+  seasonMatches.forEach((match) => {
+    const winningTeam = match.teams.reduce((prev, curr) => {
+      return curr.roundsWon > prev.roundsWon ? curr : prev;
+    }, match.teams[0]);
+    const totalRounds = match.teams.reduce((prev, curr) => {
+      return prev + curr.roundsWon;
+    }, 0);
+
+    // Create players if they don't exist
+    match.teams.forEach((team) => {
+      team.players.forEach((nickname) => {
+        if (!(nickname in players)) {
+          players[nickname] = new Player(nickname);
+        }
+        const player = players[nickname];
+
+        if (!(match.tournamentId in player.tournaments)) {
+          player.tournaments[match.tournamentId] = {
+            wins: 0,
+            perfectWins: 0,
+            champion: false,
+            matchesWon: [],
+          };
+        }
+      });
+    });
+
+    // Apenas uma forma de verificar se foi twolala Em outras palavras, se a
+    // quantidade total de rounds da batalha foi igual a 2, então não houve
+    // terceiro round
+    const wasPerfectWin = totalRounds == 2;
+
+    winningTeam.players.forEach((nickname) => {
+      const player = players[nickname];
+      const tournament = player.tournaments[match.tournamentId];
+
+      tournament.wins++;
+      tournament.perfectWins += wasPerfectWin ? 1 : 0;
+      if (match.stage == Stage.Finals) {
+        tournament.champion = true;
+      }
+      tournament.matchesWon.push(match);
+    });
+  });
+
+  const leaderboard = Object.values(players)
+    .filter((player) => player.getScore() > 0)
+    .sort(comparePlayers)
+    .map((player, index, array) => {
+      if (index === 0) {
+        player.position = 1;
+      } else {
+        // Safe because the conditional above already handles the case
+        const lastPosition = array[index - 1].position!;
+        const drawsWithLast = comparePlayers(player, array[index - 1]) === 0;
+        player.position = lastPosition + (drawsWithLast ? 0 : 1);
+      }
+
+      return player;
+    });
+
+  const sheet = ss.getSheetByName("Placar");
+  if (!sheet) {
+    return;
+  }
+
+  sheet.getRange(3, 1, 100).clearContent();
+
+  leaderboard.map((player, index) => {
+    const range = sheet.getRange(index + 3, 1, 1, 5);
+    range.setValues([
+      [
+        player.position,
+        player.nickname,
+        player.getScore(),
+        player.getPerfectWins(),
+        player.getParticipations(),
       ],
     ]);
   });
