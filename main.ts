@@ -1,5 +1,3 @@
-let players: Record<string, Player> = {};
-
 enum Delta {
   NONE = "",
   UP = "▲",
@@ -31,9 +29,13 @@ function updatePlayerDataWithMatchResult(
           wins: 0,
           perfectWins: 0,
           champion: false,
+          matches: [],
           matchesWon: [],
         };
       }
+
+      const tournament = player.tournaments[match.tournamentId];
+      tournament.matches.push(match);
     });
   });
 
@@ -62,23 +64,46 @@ function updatePlayerDataWithMatchResult(
 }
 
 function generateLeaderboards(players: Record<string, Player>): Player[] {
-  return Object.values(players)
-    .filter((player) => player.getScore() > 0)
-    .sort(comparePlayers)
-    .map((player, index, array) => {
-      if (index == 0) {
-        player.position = 1;
-        return player;
-      }
+  return (
+    Object.values(players)
+      // Desative o filtro para verificar se tá tudo certo
+      .filter((player) => player.getScore() > 0)
+      .sort(comparePlayers)
+      .map((player, index, array) => {
+        if (index == 0) {
+          player.position = 1;
+          return player;
+        }
 
-      const drawsWithLast = comparePlayers(player, array[index - 1]) === 0;
-      if (drawsWithLast) {
-        player.position = array[index - 1].position;
-      } else {
-        player.position = index + 1;
-      }
-      return player;
-    });
+        const drawsWithLast = comparePlayers(player, array[index - 1]) === 0;
+        if (drawsWithLast) {
+          player.position = array[index - 1].position;
+        } else {
+          player.position = index + 1;
+        }
+        return player;
+      })
+  );
+}
+
+function readPlayerData(): Record<string, Player> {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const seasonMatches: Match[] = [];
+
+  ss.getSheets().forEach((sheet) => {
+    const name = sheet.getName();
+    if (isTournamentSheetName(name)) {
+      seasonMatches.push(...parseTournamentSheet(sheet));
+    }
+  });
+
+  let players: Record<string, Player> = {};
+
+  seasonMatches.forEach((match) => {
+    updatePlayerDataWithMatchResult(players, match);
+  });
+
+  return players;
 }
 
 function updateLeaderboard() {
@@ -92,7 +117,7 @@ function updateLeaderboard() {
     }
   });
 
-  players = {};
+  let players: Record<string, Player> = {};
 
   seasonMatches.forEach((match) => {
     updatePlayerDataWithMatchResult(players, match);
@@ -127,12 +152,13 @@ function updateLeaderboard() {
 
     const previous = previousPlayerData[player.nickname];
     if (!previous) {
+      const score = player.getScore() ? `+${player.getScore()}` : "";
       return range.setValues([
         [
           player.position,
           player.nickname,
-          Delta.UP,
-          `+${player.getScore()}`,
+          score ? Delta.UP : Delta.NONE,
+          score,
           player.getScore(),
           player.getPerfectWins(),
           player.getParticipations(),
@@ -175,20 +201,36 @@ function updateLeaderboard() {
   });
 }
 
+// not ready yet
 function updatePlayerSheets() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  Object.values(players).forEach((player) => {
-    Logger.log(player.nickname);
-    if (player.nickname !== "Senna") {
-      return;
-    }
-    ss.insertSheet(player.nickname);
-    // hopefully this is sync?
-    const sheet = ss.getSheetByName(player.nickname)!;
+  const players = generateLeaderboards(readPlayerData());
 
-    const tournaments = Object.values(player.tournaments);
+  let sheet = ss.getSheetByName("MCs");
+  if (!sheet) {
+    sheet = ss.insertSheet("MCs");
+  }
+  sheet.clearContents();
 
-    sheet.clearContents();
-    sheet.getRange(1, 1, 1, 1).setValues([[player.nickname]]);
+  const totalTournaments = ss.getSheets().reduce((prev, curr) => {
+    return prev + +isTournamentSheetName(curr.getName());
+  }, 0);
+
+  players.forEach((player, index) => {
+    const values = [
+      [player.nickname, ""],
+      [`RANK #${player.position}`, `${player.getScore()} pontos`],
+      ["Títulos", player.getTournamentsWon()],
+      ["Vitórias", player.getWins()],
+      ["Derrotas", player.getDefeats()],
+      ["Twolalas", player.getPerfectWins()],
+      // TODO: Fix participation bug, repeating in random places
+      ["Participações", `${player.getParticipations()}/${totalTournaments}`],
+      ["", ""],
+    ];
+
+    sheet!
+      .getRange(index * values.length + 1, 1, values.length, 2)
+      .setValues(values);
   });
 }

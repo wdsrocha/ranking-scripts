@@ -20,6 +20,7 @@ class Player {
   nickname: string;
   tournaments: {
     [tournament: number]: {
+      matches: Match[];
       matchesWon: Match[];
       wins: number;
       perfectWins: number;
@@ -67,6 +68,22 @@ class Player {
   getPerfectWins(): number {
     return Object.keys(this.tournaments).reduce((score, id) => {
       return score + this.tournaments[+id].perfectWins;
+    }, 0);
+  }
+
+  getWins(): number {
+    return Object.keys(this.tournaments).reduce((score, id) => {
+      return score + this.tournaments[+id].wins;
+    }, 0);
+  }
+
+  getDefeats(): number {
+    return Object.keys(this.tournaments).reduce((score, id) => {
+      return (
+        score +
+        this.tournaments[+id].matches.length -
+        this.tournaments[+id].matchesWon.length
+      );
     }, 0);
   }
 
