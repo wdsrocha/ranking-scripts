@@ -195,7 +195,7 @@ function onEdit(e: GoogleAppsScript.Events.SheetsOnEdit) {
   const sheet = e.range.getSheet();
   const name = sheet.getName();
   if (name.startsWith("Rodada")) {
-    updateLeaderboards();
+    foo();
   }
 }
 
@@ -251,15 +251,17 @@ function generateLeaderboards(players: Record<string, Player>): Player[] {
     .filter((player) => player.getScore() > 0)
     .sort(comparePlayers)
     .map((player, index, array) => {
-      if (index === 0) {
+      if (index == 0) {
         player.position = 1;
-      } else {
-        // Safe because the conditional above already handles the case
-        const lastPosition = array[index - 1].position!;
-        const drawsWithLast = comparePlayers(player, array[index - 1]) === 0;
-        player.position = lastPosition + (drawsWithLast ? 0 : 1);
+        return player;
       }
 
+      const drawsWithLast = comparePlayers(player, array[index - 1]) === 0;
+      if (drawsWithLast) {
+        player.position = array[index - 1].position;
+      } else {
+        player.position = index + 1;
+      }
       return player;
     });
 }
@@ -302,10 +304,10 @@ function foo() {
     return;
   }
 
-  sheet.getRange(3, 1, 100).clearContent();
+  sheet.getRange(3, 1, 100, 6).clearContent();
 
   leaderboard.map((player, index) => {
-    const range = sheet.getRange(index + 3, 1, 1, 5);
+    const range = sheet.getRange(index + 3, 1, 1, 6);
 
     const previous = previousPlayerData[player.nickname];
     if (!previous) {
@@ -313,6 +315,7 @@ function foo() {
         [
           player.position,
           player.nickname,
+          `+${player.getScore()}`,
           player.getScore(),
           player.getPerfectWins(),
           player.getParticipations(),
@@ -320,17 +323,12 @@ function foo() {
       ]);
     }
 
-    let score = player.getScore().toString();
     const scoreDelta = player.getScore() - previous.getScore();
-    if (scoreDelta) {
-      score += ` +${scoreDelta}`;
-    }
-
-    let perfectWins = player.getPerfectWins().toString();
-    const perfectWinsDelta =
-      player.getPerfectWins() - previous.getPerfectWins();
-    if (perfectWinsDelta) {
-      perfectWins += ` +${perfectWinsDelta}`;
+    let tournamentScore = "";
+    if (scoreDelta < 0) {
+      tournamentScore = scoreDelta.toString();
+    } else if (scoreDelta > 0) {
+      tournamentScore = `+${scoreDelta}`;
     }
 
     let position = "";
@@ -350,8 +348,9 @@ function foo() {
       [
         position,
         player.nickname,
-        score,
-        perfectWins,
+        tournamentScore,
+        player.getScore(),
+        player.getPerfectWins(),
         player.getParticipations(),
       ],
     ]);

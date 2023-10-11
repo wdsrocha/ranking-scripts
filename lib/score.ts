@@ -101,7 +101,7 @@ function comparePlayers(a: Player, b: Player) {
   } else if (a.getTournamentsWon() != b.getTournamentsWon()) {
     return b.getTournamentsWon() - a.getTournamentsWon();
   } else if (a.getParticipations() != b.getParticipations()) {
-    return b.getParticipations() - a.getParticipations();
+    return a.getParticipations() - b.getParticipations();
   }
 
   const aOverB = a.countMatchesWonAgainst(b);
