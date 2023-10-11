@@ -1,7 +1,16 @@
+let players: Record<string, Player> = {};
+
+enum Delta {
+  NONE = "",
+  UP = "▲",
+  DOWN = "▼",
+}
+
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu("Ações")
     .addItem("Atualizar ranking", "updateLeaderboard")
+    .addItem("Atualizar players", "updatePlayerSheets")
     .addToUi();
 }
 
@@ -83,7 +92,8 @@ function updateLeaderboard() {
     }
   });
 
-  let players: Record<string, Player> = {};
+  players = {};
+
   seasonMatches.forEach((match) => {
     updatePlayerDataWithMatchResult(players, match);
   });
@@ -110,10 +120,10 @@ function updateLeaderboard() {
     return;
   }
 
-  sheet.getRange(3, 1, 100, 6).clearContent();
+  sheet.getRange(3, 1, 100, 7).clearContent();
 
   leaderboard.map((player, index) => {
-    const range = sheet.getRange(index + 3, 1, 1, 6);
+    const range = sheet.getRange(index + 3, 1, 1, 7);
 
     const previous = previousPlayerData[player.nickname];
     if (!previous) {
@@ -121,6 +131,7 @@ function updateLeaderboard() {
         [
           player.position,
           player.nickname,
+          Delta.UP,
           `+${player.getScore()}`,
           player.getScore(),
           player.getPerfectWins(),
@@ -137,28 +148,47 @@ function updateLeaderboard() {
       tournamentScore = `+${scoreDelta}`;
     }
 
-    let position = "";
+    let delta: string = Delta.NONE;
     if (
       !player.position ||
       !previous.position ||
-      player.position === previous.position
+      player.position == previous.position
     ) {
+      delta = Delta.NONE;
     } else if (player.position > previous.position) {
-      position = "⬇ ️";
+      delta = `${player.position - previous.position} ${Delta.DOWN}`;
     } else if (player.position < previous.position) {
-      position = "⬆️ ";
+      delta = `${previous.position - player.position} ${Delta.UP}`;
     }
-    position += player.position?.toString();
 
     return range.setValues([
       [
-        position,
+        player.position,
         player.nickname,
+        delta,
         tournamentScore,
         player.getScore(),
         player.getPerfectWins(),
         player.getParticipations(),
       ],
     ]);
+  });
+}
+
+function updatePlayerSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  Object.values(players).forEach((player) => {
+    Logger.log(player.nickname);
+    if (player.nickname !== "Senna") {
+      return;
+    }
+    ss.insertSheet(player.nickname);
+    // hopefully this is sync?
+    const sheet = ss.getSheetByName(player.nickname)!;
+
+    const tournaments = Object.values(player.tournaments);
+
+    sheet.clearContents();
+    sheet.getRange(1, 1, 1, 1).setValues([[player.nickname]]);
   });
 }
