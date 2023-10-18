@@ -41,16 +41,24 @@ class Player {
       return 0;
     }
 
-    let score = tournament.perfectWins;
+    let score = 0;
     if (tournament.wins === 1) {
-      score += 1;
+      score = 1;
     } else if (tournament.wins === 2) {
-      score += 3;
+      score = 3;
     } else if (tournament.wins === 3) {
-      score += 5;
+      score = 5;
     } else if (tournament.wins === 4) {
-      score += 7;
+      score = 7;
     }
+
+    // Se a batalha for de dupla, a pontuação é dividida entre a dupla,
+    // arredondando para cima
+    if (tournament.matches[0].teams[0].players.length === 2) {
+      score = Math.ceil(score / 2);
+    }
+
+    score += tournament.perfectWins;
 
     return score;
   }
@@ -60,9 +68,12 @@ class Player {
   }
 
   getScore(): number {
-    return Object.keys(this.tournaments).reduce((score, id) => {
-      return score + this.getTournamentScore(+id);
-    }, 0);
+    const hasPenalty = this.nickname === "Manogê";
+    return (
+      Object.keys(this.tournaments).reduce((score, id) => {
+        return score + this.getTournamentScore(+id);
+      }, 0) - +hasPenalty
+    );
   }
 
   getPerfectWins(): number {
@@ -157,13 +168,18 @@ function parseTournamentSheet(
   const tournamentId = parseInt(sheet.getName().split(" ")[1]!);
 
   const range = sheet.getRange(3, 2, 15, 4);
-  const values = range.getValues();
+  const values = range.getValues() as [string, number, number, string][];
 
   const matches: Match[] = [];
 
   // Only 1x1
   values.forEach((row, i) => {
-    const [nickname1, roundsWon1, roundsWon2, nickname2] = row;
+    // string, number, number, string
+    const [team1, roundsWon1, roundsWon2, team2] = row;
+
+    // Se não der match no regex, ainda assim vira um array de um só item
+    const players1 = team1.split(" e ");
+    const players2 = team2.split(" e ");
 
     matches.push({
       tournamentId,
@@ -171,11 +187,11 @@ function parseTournamentSheet(
       teams: [
         {
           roundsWon: roundsWon1,
-          players: [nickname1],
+          players: players1,
         },
         {
           roundsWon: roundsWon2,
-          players: [nickname2],
+          players: players2,
         },
       ],
     });
