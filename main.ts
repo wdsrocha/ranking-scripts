@@ -130,6 +130,7 @@ function updateLeaderboard() {
   const previousMatches = seasonMatches.filter(
     (match) => match.tournamentId !== lastTournament
   );
+  // Equivalente à seasonMatches, mas indo apenas até a penúltima rodada
   let previousPlayerData: Record<string, Player> = {};
   previousMatches.forEach((match) => {
     updatePlayerDataWithMatchResult(previousPlayerData, match);

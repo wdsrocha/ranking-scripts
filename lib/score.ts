@@ -68,7 +68,7 @@ class Player {
   }
 
   getScore(): number {
-    const hasPenalty = this.nickname === "Manogê";
+    const hasPenalty = ["Manogê", "Mano P"].includes(this.nickname);
     return (
       Object.keys(this.tournaments).reduce((score, id) => {
         return score + this.getTournamentScore(+id);

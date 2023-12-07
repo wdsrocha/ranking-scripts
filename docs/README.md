@@ -11,3 +11,7 @@ Click here:
 To generate this (without styling):
 
 ![](leaderboard.png)
+
+## Dev
+
+Run `clasp push --watch`.
