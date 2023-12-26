@@ -37,11 +37,20 @@ class Player {
 
   getTournamentScore(tournamentId: number): number {
     const tournament = this.tournaments[tournamentId];
-    if (tournament === undefined) {
-      return 0;
+    if (!tournament) {
+      if (this.nickname === "Manogê" && tournamentId === 3) {
+        return -1;
+      } else if (this.nickname === "Mano P" && tournamentId === 6) {
+        return -1;
+      } else if (this.nickname === "James" && tournamentId === 8) {
+        return -1;
+      } else {
+        return 0;
+      }
     }
 
     let score = 0;
+
     if (tournament.wins === 1) {
       score = 1;
     } else if (tournament.wins === 2) {
@@ -68,12 +77,22 @@ class Player {
   }
 
   getScore(): number {
-    const hasPenalty = ["Manogê", "Mano P"].includes(this.nickname);
-    return (
-      Object.keys(this.tournaments).reduce((score, id) => {
-        return score + this.getTournamentScore(+id);
-      }, 0) - +hasPenalty
-    );
+    // TODO: Refactor this into max number of existing tournaments This changed
+    // because it would skip tournaments where the player missed Which shouldn't
+    // happen, as there is a special case where the player loses 1 point if it
+    // misses a tournament while staying in the top 4
+    return [0, 1, 2, 3, 4, 5, 6, 7, 8].reduce((score, id) => {
+      return score + this.getTournamentScore(id);
+    }, 0);
+  }
+
+  getScoreUpTo(tournamentId: number): number {
+    return [0, 1, 2, 3, 4, 5, 6, 7, 8].reduce((score, id) => {
+      if (+id > tournamentId) {
+        return score;
+      }
+      return score + this.getTournamentScore(id);
+    }, 0);
   }
 
   getPerfectWins(): number {
