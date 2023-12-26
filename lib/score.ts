@@ -10,10 +10,10 @@ interface Match {
 }
 
 enum Stage {
-  EightFinals,
-  QuarterFinals,
-  SemiFinals,
-  Finals,
+  EightFinals = "Oitavas de Final",
+  QuarterFinals = "Quartas de Final",
+  SemiFinals = "Semifinal",
+  Finals = "Final",
 }
 
 class Player {
