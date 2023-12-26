@@ -4,7 +4,7 @@ interface Team {
 }
 
 interface Match {
-  tournamentId: number;
+  tournamentId?: number;
   stage: Stage;
   teams: Team[];
 }
