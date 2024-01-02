@@ -98,7 +98,12 @@ function getMatches(
   let matches: Match[] = [];
 
   data.forEach((row, i) => {
-    const stage = row[0] ? toStage(row[0]) : matches[i - 1].stage;
+    // Empty line. This shouldn't be happening, but some people did it. Oh well.
+    if (!row[0] && !row[1]) {
+      return;
+    }
+
+    const stage = row[0] ? toStage(row[0]) : matches.slice(-1)[0].stage;
     matches.push({
       raw: row[1],
       date,
