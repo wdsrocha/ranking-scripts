@@ -226,6 +226,12 @@ function getLosers(match: Match): string[] {
   return losers;
 }
 
+function readSheets(sheets: GoogleAppsScript.Spreadsheet.Sheet[]) {
+  return sheets.flatMap((sheet) =>
+    getTournaments(sheet.getDataRange().getValues())
+  );
+}
+
 function execute() {
   const ui = SpreadsheetApp.getUi();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -236,8 +242,9 @@ function execute() {
   let tournaments = getTournaments(data);
 
   if (tournaments.length == 0) {
-    data = sheet.getDataRange().getValues();
-    tournaments = getTournaments(data);
+    tournaments = readSheets(
+      ss.getSheets().filter((sheet) => sheet.getName().includes("✅"))
+    );
   }
 
   const matches = tournaments.flatMap((tournament) => tournament.matches);
