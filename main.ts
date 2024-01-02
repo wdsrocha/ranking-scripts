@@ -65,13 +65,14 @@ function getTeamsFromMatchResults(data: string): Team[] {
     const roundsResult = [roundsWon1, roundsWon2];
 
     return data.split(full!).map((team, i) => ({
-      players: team.split(" e ").map((s) => s.trim()),
+      players: team
+        .split(", ") // Handle trio
+        .join(" e ") // Handle trio
+        .split(" e ")
+        .map((s) => s.trim()),
       roundsWon: parseInt(roundsResult[i]),
     }));
   }
-
-  // With score, double-three
-  // E.g.: Berg 2 x Barb 0 x Sharp 1
 
   throw new Error(`A batalha "${data}" está em formato inválido`);
 }
