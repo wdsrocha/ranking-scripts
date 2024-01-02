@@ -1,3 +1,12 @@
+function playersToString(p: string[]) {
+  if (p.length === 0) return "";
+  let s = p[0];
+  for (let i = 1; i < p.length; i++) {
+    s += i < p.length - 1 ? `, ${p[i]}` : ` e ${p[i]}`;
+  }
+  return s;
+}
+
 function reloadMatchSheet(
   sheet: GoogleAppsScript.Spreadsheet.Sheet,
   matches: Match[]
@@ -19,8 +28,8 @@ function reloadMatchSheet(
     match.host,
     match.stage,
     match.raw,
-    getWinners(match).join(" e "),
-    getLosers(match).join(" e "),
+    playersToString(getWinners(match)),
+    playersToString(getLosers(match)),
   ]);
 
   if (headers.length !== matchTable[0].length) {
