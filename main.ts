@@ -36,12 +36,22 @@ interface Tournament {
 }
 
 function getTeamsFromMatchResults(data: string): Team[] {
+  if (data.split(" x ").length === 0) {
+    throw new Error(`A batalha "${data}" está em formato inválido`);
+  }
+
   // Scoreless
   // E.g.: Blink e Killer* x Kenny e Kennyzin
   //       Onec x Jhones*
   if (data.includes("*")) {
     return data.split(" x ").map((team) => ({
-      players: team.replace("*", "").split(" e "),
+      // players: team.replace("*", "").split(" e "),
+      players: team
+        .replace("*", "")
+        .split(", ") // Handle trio
+        .join(" e ") // Handle trio
+        .split(" e ")
+        .map((s) => s.trim()),
       roundsWon: team.includes("*") ? 1 : 0,
     }));
   }
@@ -55,7 +65,7 @@ function getTeamsFromMatchResults(data: string): Team[] {
     const roundsResult = [roundsWon1, roundsWon2];
 
     return data.split(full!).map((team, i) => ({
-      players: team.split(" e "),
+      players: team.split(" e ").map((s) => s.trim()),
       roundsWon: parseInt(roundsResult[i]),
     }));
   }
@@ -63,7 +73,7 @@ function getTeamsFromMatchResults(data: string): Team[] {
   // With score, double-three
   // E.g.: Berg 2 x Barb 0 x Sharp 1
 
-  return [];
+  throw new Error(`A batalha "${data}" está em formato inválido`);
 }
 
 function toStage(rawStage: string): Stage {
