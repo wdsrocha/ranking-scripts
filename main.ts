@@ -59,8 +59,8 @@ function getTeamsFromMatchResults(data: string): Team[] {
   // With score, no double-three
   // E.g.: RK 2 x 0 Big Xang
   //       Eva e Isa 2 x 1 Mont e Onec
-  if (/ \d x \d /.test(data)) {
-    const [full, roundsWon1, roundsWon2] = / (\d) x (\d) /.exec(data) || [];
+  if (/ \d\s?x\s?\d /.test(data)) {
+    const [full, roundsWon1, roundsWon2] = / (\d)\s?x\s?(\d) /.exec(data) || [];
     // Use the extracted groups in your code
     const roundsResult = [roundsWon1, roundsWon2];
 
