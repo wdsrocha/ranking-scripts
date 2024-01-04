@@ -79,13 +79,17 @@ function getTeamsFromMatchResults(data: string): Team[] {
 
 function toStage(rawStage: string): Stage {
   rawStage = rawStage.toLocaleLowerCase();
-  if (rawStage == "primeira fase") {
+  if (rawStage === "primeira fase") {
     return Stage.EightFinals;
-  } else if (rawStage == "segunda fase") {
+  } else if (rawStage === "segunda fase") {
     return Stage.QuarterFinals;
-  } else if (rawStage == "semifinal" || rawStage == "semi final") {
+  } else if (
+    rawStage === "semifinal" ||
+    rawStage === "semi final" ||
+    rawStage === "semifinais"
+  ) {
     return Stage.SemiFinals;
-  } else if (rawStage == "final") {
+  } else if (rawStage === "final") {
     return Stage.Finals;
   } else {
     return Stage.Unknown;
@@ -105,12 +109,18 @@ function getMatches(
     }
 
     const stage = row[0] ? toStage(row[0]) : matches.slice(-1)[0].stage;
+
+    const matchResult = row
+      .slice(1)
+      .filter((col) => col.length)
+      .join(" x ");
+
     matches.push({
-      raw: row[1],
+      raw: matchResult,
       date,
       host,
       stage,
-      teams: getTeamsFromMatchResults(row[1]),
+      teams: getTeamsFromMatchResults(matchResult),
     });
   });
 
@@ -143,7 +153,7 @@ function getMatches(
 //       Campeão       | RK                    |                     |
 function getTournament(data: string[][]): Tournament {
   const date = data[0][1];
-  const host = data[1][1];
+  const host = data[1][1].trim();
   const matches = getMatches(data.slice(4, -1), { host, date });
 
   return {
