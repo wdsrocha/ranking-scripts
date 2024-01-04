@@ -244,7 +244,7 @@ function readSheets(sheets: GoogleAppsScript.Spreadsheet.Sheet[]) {
 }
 
 function execute() {
-  const ui = SpreadsheetApp.getUi();
+  // const ui = SpreadsheetApp.getUi();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getActiveSheet();
 
@@ -252,11 +252,11 @@ function execute() {
   let data = sheet.getActiveRange()?.getValues() as string[][];
   let tournaments = getTournaments(data);
 
-  // if (tournaments.length == 0) {
-  //   tournaments = readSheets(
-  //     ss.getSheets().filter((sheet) => sheet.getName().includes("✅"))
-  //   );
-  // }
+  if (tournaments.length == 0) {
+    tournaments = readSheets(
+      ss.getSheets().filter((sheet) => sheet.getName().includes("✅"))
+    );
+  }
 
   const matches = tournaments.flatMap((tournament) => tournament.matches);
 

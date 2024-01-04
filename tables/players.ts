@@ -5,10 +5,15 @@ interface PlayerData extends Player {
   titles: number; // folhinhas
   soloTitles: number;
   winRate: number;
+  tournamentIds: string[]; // tournament key `${date} | ${host}`
 }
 
 function asKey(nickname: string) {
   return nickname.toLocaleLowerCase().trim();
+}
+
+function getTournamentId(match: Match) {
+  return `${match.date} | ${match.host}`;
 }
 
 function reloadPlayerSheet(
@@ -30,10 +35,15 @@ function reloadPlayerSheet(
             titles: 0,
             soloTitles: 0,
             winRate: 0,
+            tournamentIds: [],
           };
         }
 
         players[asKey(nickname)].matches.push(match);
+
+        // THIS WILL HAVE DUPLICATES!!!
+        console.log(getTournamentId(match));
+        players[asKey(nickname)].tournamentIds.push(getTournamentId(match));
       });
     });
 
@@ -65,6 +75,7 @@ function reloadPlayerSheet(
     "Vitórias (total)",
     "Vitórias (solo)",
     "Taxa de Vitórias",
+    "Edições Participadas",
   ];
 
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -97,6 +108,7 @@ function reloadPlayerSheet(
       player.totalWins,
       player.soloWins,
       player.winRate,
+      new Set(player.tournamentIds).size,
     ]);
 
   if (headers.length !== playerTable[0].length) {
