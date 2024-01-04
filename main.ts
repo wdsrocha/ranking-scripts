@@ -252,11 +252,11 @@ function execute() {
   let data = sheet.getActiveRange()?.getValues() as string[][];
   let tournaments = getTournaments(data);
 
-  if (tournaments.length == 0) {
-    tournaments = readSheets(
-      ss.getSheets().filter((sheet) => sheet.getName().includes("✅"))
-    );
-  }
+  // if (tournaments.length == 0) {
+  //   tournaments = readSheets(
+  //     ss.getSheets().filter((sheet) => sheet.getName().includes("✅"))
+  //   );
+  // }
 
   const matches = tournaments.flatMap((tournament) => tournament.matches);
 
@@ -291,4 +291,63 @@ function printMatch(match: Match): string {
   return match.teams
     .map((team) => `${team.players.join(" e ")} (${team.roundsWon})`)
     .join(" x ");
+}
+
+function fixPhaseRow(data: string[][]) {
+  data.forEach((row, i) => {
+    if (toStage(row[0]) !== Stage.Unknown && !row[1]) {
+      // If there is no phase in the next line but there is a match, that means
+      // the phase is incorrectly placed and must go down a line
+      if (!data[i + 1][0] && data[i + 1][1]) {
+        data[i + 1][0] = row[0];
+      }
+
+      data[i][0] = "";
+    }
+  });
+  return data;
+}
+
+function fixMutipleScoreTypes(data: string[][]) {
+  return data.map((row) => {
+    if (row[2] && row[3] && (row[1].includes("*") || row[4].includes("*"))) {
+      return [
+        row[0],
+        row[1].replace("*", ""),
+        row[2],
+        row[3],
+        row[4].replace("*", ""),
+      ];
+    } else {
+      return row;
+    }
+  });
+}
+
+function mergeResultsInSingleColumn(data: string[][]) {
+  return data.map((row) => {
+    if (
+      row[1] &&
+      (row[2].toString() === "2" || row[3].toString() === "2") &&
+      row[4]
+    ) {
+      return [row[0], `${row[1]} ${row[2]} x ${row[3]} ${row[4]}`, "", "", ""];
+    } else {
+      return row;
+    }
+  });
+}
+
+function fix() {
+  const range = SpreadsheetApp.getActiveSpreadsheet()
+    .getActiveSheet()
+    .getActiveRange()!;
+
+  let data = range.getValues();
+  data = fixPhaseRow(data);
+  data = fixMutipleScoreTypes(data);
+  data = mergeResultsInSingleColumn(data);
+
+  range.setValues(data);
+  execute();
 }
