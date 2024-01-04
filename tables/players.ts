@@ -3,7 +3,12 @@ interface PlayerData extends Player {
   totalWins: number;
   soloWins: number;
   titles: number; // folhinhas
+  soloTitles: number;
   winRate: number;
+}
+
+function asKey(nickname: string) {
+  return nickname.toLocaleLowerCase().trim();
 }
 
 function reloadPlayerSheet(
@@ -16,30 +21,36 @@ function reloadPlayerSheet(
     // Create players that didn't exist before
     match.teams.forEach((team) => {
       team.players.forEach((nickname) => {
-        if (!(nickname in players)) {
-          players[nickname] = {
+        if (!(asKey(nickname) in players)) {
+          players[asKey(nickname)] = {
             nickname,
             matches: [],
             totalWins: 0,
             soloWins: 0,
             titles: 0,
+            soloTitles: 0,
             winRate: 0,
           };
         }
 
-        players[nickname].matches.push(match);
+        players[asKey(nickname)].matches.push(match);
       });
     });
 
     const winners = getWinners(match);
 
     winners.forEach((winner) => {
-      players[winner].totalWins++;
-      if (winners.length === 1) {
-        players[winner].soloWins++;
-      }
+      const p = players[asKey(winner)];
+      p.totalWins++;
       if (match.stage === Stage.Finals) {
-        players[winner].titles++;
+        p.titles++;
+      }
+
+      if (winners.length === 1) {
+        p.soloWins++;
+        if (match.stage === Stage.Finals) {
+          p.soloTitles++;
+        }
       }
     });
   });
@@ -49,7 +60,8 @@ function reloadPlayerSheet(
   const headers = [
     "Vulgo",
     "Batalhas",
-    "Folhinhas",
+    "Folhinhas (total)",
+    "Folhinhas (solo)",
     "Vitórias (total)",
     "Vitórias (solo)",
     "Taxa de Vitórias",
@@ -65,6 +77,8 @@ function reloadPlayerSheet(
     .sort((a, b) => {
       if (a.titles !== b.titles) {
         return b.titles - a.titles;
+      } else if (a.soloTitles !== b.soloTitles) {
+        return b.soloTitles - a.soloTitles;
       } else if (a.totalWins !== b.totalWins) {
         return b.totalWins - a.totalWins;
       } else if (a.soloWins !== b.soloWins) {
@@ -79,6 +93,7 @@ function reloadPlayerSheet(
       player.nickname,
       player.matches.length,
       player.titles,
+      player.soloTitles,
       player.totalWins,
       player.soloWins,
       player.winRate,
