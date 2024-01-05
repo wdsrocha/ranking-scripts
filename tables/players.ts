@@ -42,7 +42,6 @@ function reloadPlayerSheet(
         players[asKey(nickname)].matches.push(match);
 
         // THIS WILL HAVE DUPLICATES!!!
-        console.log(getTournamentId(match));
         players[asKey(nickname)].tournamentIds.push(getTournamentId(match));
       });
     });
@@ -76,7 +75,7 @@ function reloadPlayerSheet(
     ((range: GoogleAppsScript.Spreadsheet.Range) => void)?
   ][] = [
     ["Vulgo", (p) => p.nickname],
-    ["Edições", countTournaments, (range) => range.createFilter()],
+    ["Edições", countTournaments],
     ["Batalhas", (p) => p.matches.length],
     ["Folhinhas", (p) => p.titles],
     [

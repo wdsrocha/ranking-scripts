@@ -1,6 +1,9 @@
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
-  ui.createMenu("Ações").addItem("Executar", "execute").addToUi();
+  ui.createMenu("Ações")
+    .addItem("Atualizar Batalhas", "execute")
+    .addItem("Atualizar Estatísticas", "updateStats")
+    .addToUi();
 }
 
 interface Team {
@@ -244,7 +247,6 @@ function readSheets(sheets: GoogleAppsScript.Spreadsheet.Sheet[]) {
 }
 
 function execute() {
-  // const ui = SpreadsheetApp.getUi();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getActiveSheet();
 
@@ -262,25 +264,24 @@ function execute() {
 
   reloadMatchSheet(ss.getSheetByName("Batalhas")!, matches);
   reloadPlayerSheet(ss.getSheetByName("MCs")!, matches);
+  reloadExtraSheet(ss.getSheetByName("Extra")!, matches);
+}
 
-  // ui.alert(matches.map(printMatch).join("\n"));
+function updateStats() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Batalhas")!;
+  const data = sheet.getDataRange().getValues();
 
-  // ui.alert(
-  //   j(
-  //     tournaments.map((tournament) => ({
-  //       date: Utilities.formatDate(
-  //         new Date(tournament.date),
-  //         "GMT-0400",
-  //         "EEEE, dd/MM/yyyy"
-  //       ),
-  //       host: tournament.host,
-  //       firstMatch: printMatch(tournament.matches[0]),
-  //       lastMatch: printMatch(
-  //         tournament.matches[tournament.matches.length - 1]
-  //       ),
-  //     }))
-  //   )
-  // );
+  const matches: Match[] = data.slice(1).map((row) => ({
+    date: row[0],
+    host: row[1],
+    stage: row[2],
+    raw: row[3],
+    teams: getTeamsFromMatchResults(row[3]),
+  }));
+
+  reloadPlayerSheet(ss.getSheetByName("MCs")!, matches);
+  reloadExtraSheet(ss.getSheetByName("Extra")!, matches);
 }
 
 function j(d: any) {
