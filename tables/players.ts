@@ -65,59 +65,77 @@ function reloadPlayerSheet(
     });
   });
 
-  sheet.clearContents();
+  type P = PlayerData;
 
-  const headers = [
-    "Vulgo",
-    "Batalhas",
-    "Folhinhas (total)",
-    "Folhinhas (solo)",
-    "Vitórias (total)",
-    "Vitórias (solo)",
-    "Taxa de Vitórias",
-    "Edições Participadas",
+  const countTournaments = (player: PlayerData) =>
+    new Set(player.matches.map(getTournamentId)).size;
+
+  const tableDefinitions: [
+    string,
+    (p: P) => string | number,
+    ((range: GoogleAppsScript.Spreadsheet.Range) => void)?
+  ][] = [
+    ["Vulgo", (p) => p.nickname],
+    ["Edições", countTournaments, (range) => range.createFilter()],
+    ["Batalhas", (p) => p.matches.length],
+    ["Folhinhas", (p) => p.titles],
+    [
+      "Vice",
+      (p) =>
+        p.matches.filter((match) => match.stage === Stage.Finals).length -
+        p.titles,
+    ],
+    ["Vitórias", (p) => p.totalWins],
+    ["Derrotas", (p) => p.matches.length - p.totalWins],
+    [
+      "Vitórias / Batalhas",
+      (p) => (p.matches.length ? p.totalWins / p.matches.length : 0),
+      (range) => range.setNumberFormat("00.00%"),
+    ],
+    [
+      "Folhinhas / Edições",
+      (p) => (countTournaments(p) ? p.titles / countTournaments(p) : 0),
+      (range) => range.setNumberFormat("00.00%"),
+    ],
+    ["Folhinhas (solo)", (p) => p.soloTitles],
+    ["Vitórias (solo)", (p) => p.soloWins],
   ];
 
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-
   const playerTable = Object.values(players)
-    .map((player) => ({
-      ...player,
-      winRate: player.totalWins / player.matches.length,
-    }))
     .sort((a, b) => {
       if (a.titles !== b.titles) {
         return b.titles - a.titles;
-      } else if (a.soloTitles !== b.soloTitles) {
-        return b.soloTitles - a.soloTitles;
+        //   } else if (a.soloTitles !== b.soloTitles) {
+        //     return b.soloTitles - a.soloTitles;
       } else if (a.totalWins !== b.totalWins) {
         return b.totalWins - a.totalWins;
-      } else if (a.soloWins !== b.soloWins) {
-        return b.soloWins - a.soloWins;
+        //   } else if (a.soloWins !== b.soloWins) {
+        //     return b.soloWins - a.soloWins;
       } else if (a.matches.length !== b.matches.length) {
         return b.matches.length - a.matches.length;
       } else {
         return a.nickname.localeCompare(b.nickname);
       }
     })
-    .map((player) => [
-      player.nickname,
-      player.matches.length,
-      player.titles,
-      player.soloTitles,
-      player.totalWins,
-      player.soloWins,
-      player.winRate,
-      new Set(player.tournamentIds).size,
-    ]);
+    .map((player) => tableDefinitions.map(([header, f]) => f(player)));
 
-  if (headers.length !== playerTable[0].length) {
-    throw new Error(`Headers length does not match playerTable number of columns on sheet "MCs".
-      headers.length => ${headers.length}
-      playerTable[0].length => ${playerTable[0].length}`);
-  }
+  sheet.clearFormats();
+  sheet.clearContents();
 
   sheet
-    .getRange(2, 1, playerTable.length, headers.length)
+    .getRange(1, 1, 1, tableDefinitions.length)
+    .setValues([tableDefinitions.map(([header]) => header)])
+    .setFontWeight("bold")
+    .setHorizontalAlignment("center")
+    .setVerticalAlignment("middle")
+    .setWrap(true);
+
+  sheet
+    .getRange(2, 1, playerTable.length, tableDefinitions.length)
     .setValues(playerTable);
+
+  tableDefinitions.forEach(([_, __, apply], index) => {
+    const range = sheet.getRange(1, index + 1, sheet.getLastRow() - 1, 1);
+    apply?.(range);
+  });
 }
