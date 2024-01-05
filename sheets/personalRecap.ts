@@ -1,24 +1,7 @@
-interface PlayerData extends Player {
-  // totalMatches: number | equivalent to totalMatches => matches.length
-  totalWins: number;
-  soloWins: number;
-  titles: number; // folhinhas
-  soloTitles: number;
-  winRate: number;
-  tournamentIds: string[]; // tournament key `${date} | ${host}`
-}
-
-function norm(nickname: string) {
-  return nickname.toLocaleLowerCase().trim();
-}
-
-function getTournamentId(match: Match) {
-  return `${match.date} | ${match.host}`;
-}
-
-function reloadPlayerSheet(
+function reloadPersonalRecapSheet(
   sheet: GoogleAppsScript.Spreadsheet.Sheet,
-  matches: Match[]
+  matches: Match[],
+  nickname: string
 ) {
   const players: Record<string, PlayerData> = {};
 
@@ -101,40 +84,27 @@ function reloadPlayerSheet(
   ];
 
   const playerTable = Object.values(players)
-    .sort((a, b) => {
-      if (a.titles !== b.titles) {
-        return b.titles - a.titles;
-        //   } else if (a.soloTitles !== b.soloTitles) {
-        //     return b.soloTitles - a.soloTitles;
-      } else if (a.totalWins !== b.totalWins) {
-        return b.totalWins - a.totalWins;
-        //   } else if (a.soloWins !== b.soloWins) {
-        //     return b.soloWins - a.soloWins;
-      } else if (a.matches.length !== b.matches.length) {
-        return b.matches.length - a.matches.length;
-      } else {
-        return a.nickname.localeCompare(b.nickname);
-      }
-    })
+    .filter((player) => norm(player.nickname) === norm(nickname))
     .map((player) => tableDefinitions.map(([header, f]) => f(player)));
 
   sheet.clearFormats();
   sheet.clearContents();
 
   sheet
-    .getRange(1, 1, 1, tableDefinitions.length)
-    .setValues([tableDefinitions.map(([header]) => header)])
+    .getRange(1, 1, tableDefinitions.length, 1)
+    .setValues(tableDefinitions.map(([header]) => [header]))
     .setFontWeight("bold")
     .setHorizontalAlignment("center")
     .setVerticalAlignment("middle")
     .setWrap(true);
 
   sheet
-    .getRange(2, 1, playerTable.length, tableDefinitions.length)
-    .setValues(playerTable);
+    .getRange(1, 2, tableDefinitions.length, 1)
+    .setValues(
+      tableDefinitions.map(([header, f]) => [f(players[norm(nickname)])])
+    );
 
-  tableDefinitions.forEach(([_, __, apply], index) => {
-    const range = sheet.getRange(1, index + 1, sheet.getLastRow() - 1, 1);
-    apply?.(range);
-  });
+  //   sheet
+  //     .getRange(1, 2, tableDefinitions.length, playerTable.length)
+  //     .setValues(playerTable);
 }

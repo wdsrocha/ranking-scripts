@@ -282,6 +282,7 @@ function updateStats() {
 
   reloadPlayerSheet(ss.getSheetByName("MCs")!, matches);
   reloadExtraSheet(ss.getSheetByName("Extra")!, matches);
+  reloadPersonalRecapSheet(ss.getSheetByName("Recap")!, matches, "Xavier");
 }
 
 function j(d: any) {

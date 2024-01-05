@@ -13,7 +13,7 @@ function reloadExtraSheet(
       match.teams[i].players.forEach((a) => {
         for (let j = i + 1; j < match.teams.length; j++) {
           match.teams[j].players.forEach((b) => {
-            const [u, v] = [asKey(a), asKey(b)].sort();
+            const [u, v] = [norm(a), norm(b)].sort();
             const key = [u, v].join(" x ");
             if (!(key in stats)) {
               stats[key] = {
@@ -24,23 +24,11 @@ function reloadExtraSheet(
             }
             stats[key].matches.push(match);
 
-            if (key === "onec x xavier") {
-              console.log({
-                winners: getWinners(match).map(asKey),
-                [`did ${asKey(u)} won?`]: getWinners(match)
-                  .map(asKey)
-                  .includes(asKey(u)),
-                [`did ${asKey(v)} won?`]: getWinners(match)
-                  .map(asKey)
-                  .includes(asKey(v)),
-              });
-            }
-
-            if (getWinners(match).map(asKey).includes(asKey(u))) {
+            if (getWinners(match).map(norm).includes(norm(u))) {
               stats[key].aWins++;
             }
 
-            if (getWinners(match).map(asKey).includes(asKey(v))) {
+            if (getWinners(match).map(norm).includes(norm(v))) {
               stats[key].bWins++;
             }
           });
