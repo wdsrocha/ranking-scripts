@@ -41,11 +41,13 @@ function reloadExtraSheet(
 
   const table = Object.entries(stats).map(([key, stats]) => {
     const [a, b] = key.split(" x ");
-    return [
-      `${a} (${stats.aWins}) x (${stats.bWins}) ${b}`,
-      stats.matches.length,
-      Math.abs(stats.aWins - stats.bWins),
-    ];
+    let battle = "";
+    if (stats.aWins > stats.bWins) {
+      battle = `${a} (${stats.aWins}) x (${stats.bWins}) ${b}`;
+    } else {
+      battle = `${b} (${stats.bWins}) x (${stats.aWins}) ${a}`;
+    }
+    return [battle, stats.matches.length, Math.abs(stats.aWins - stats.bWins)];
   });
 
   if (headers.length !== table[0].length) {
