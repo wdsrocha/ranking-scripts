@@ -69,6 +69,24 @@ function reloadPlayerSheet(
   const countTournaments = (player: PlayerData) =>
     new Set(player.matches.map(getTournamentId)).size;
 
+  const countFavoriteHost = (player: PlayerData): string => {
+    return Object.entries(
+      Array.from(new Set(player.matches.map(getTournamentId)))
+        .map((id) => id.split(" | ")[1])
+        .reduce<Record<string, number>>(
+          (prev, curr) => ({
+            ...prev,
+            [curr]: prev[curr] ? prev[curr] + 1 : 1,
+          }),
+          {}
+        )
+    )
+      .sort((a, b) => b[1] - a[1])
+      .filter(([_, count], i, arr) => count === arr[0][1])
+      .map(([host, count]) => `${host} (${count})`)
+      .join(" e ");
+  };
+
   const tableDefinitions: [
     string,
     (p: P) => string | number,
@@ -98,6 +116,7 @@ function reloadPlayerSheet(
     ],
     ["Folhinhas (solo)", (p) => p.soloTitles],
     ["Vitórias (solo)", (p) => p.soloWins],
+    ["Batalha", (p) => countFavoriteHost(p)],
   ];
 
   const playerTable = Object.values(players)
