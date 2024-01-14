@@ -155,6 +155,7 @@ function getMatches(
 //       Final         | RK* x Pedrina         |                     |
 //       Campeão       | RK                    |                     |
 function getTournament(data: string[][]): Tournament {
+  // const date = new Date(data[0][1]).toISOString();
   const date = data[0][1];
   const host = data[1][1].trim();
   const matches = getMatches(data.slice(4, -1), { host, date });
@@ -282,6 +283,7 @@ function updateStats() {
 
   reloadPlayerSheet(ss.getSheetByName("MCs")!, matches);
   reloadExtraSheet(ss.getSheetByName("Extra")!, matches);
+  reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
   reloadPersonalRecapSheet(ss.getSheetByName("Recap")!, matches, "Xavier");
 }
 

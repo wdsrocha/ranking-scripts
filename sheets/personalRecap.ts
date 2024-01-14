@@ -67,6 +67,10 @@ function reloadPersonalRecapSheet(
         p.matches.filter((match) => match.stage === Stage.Finals).length -
         p.titles,
     ],
+    [
+      "Finais",
+      (p) => p.matches.filter((match) => match.stage === Stage.Finals).length,
+    ],
     ["Vitórias", (p) => p.totalWins],
     ["Derrotas", (p) => p.matches.length - p.totalWins],
     [
@@ -103,8 +107,4 @@ function reloadPersonalRecapSheet(
     .setValues(
       tableDefinitions.map(([header, f]) => [f(players[norm(nickname)])])
     );
-
-  //   sheet
-  //     .getRange(1, 2, tableDefinitions.length, playerTable.length)
-  //     .setValues(playerTable);
 }
