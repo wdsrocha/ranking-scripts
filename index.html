@@ -1,0 +1,14 @@
+<script>
+    google.script.run
+      .withSuccessHandler(({ data, filename }) => {
+        if (data && filename) {
+          const a = document.createElement("a");
+          document.body.appendChild(a);
+          a.download = filename;
+          a.href = data;
+          a.click();
+        }
+        google.script.host.close();
+      })
+    .downloadFile();
+    </script>

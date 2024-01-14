@@ -3,6 +3,7 @@ function onOpen() {
   ui.createMenu("Ações")
     .addItem("Atualizar Batalhas", "execute")
     .addItem("Atualizar Estatísticas", "updateStats")
+    .addItem("Gerar Estatísticas em JSON", "download")
     .addToUi();
 }
 
@@ -354,4 +355,30 @@ function fix() {
 
   range.setValues(data);
   execute();
+}
+
+function download() {
+  const html = HtmlService.createHtmlOutputFromFile("index");
+  SpreadsheetApp.getUi().showModalDialog(html, "Baixar estatísticas");
+}
+
+function downloadFile() {
+  const obj = generateStats();
+
+  const filename = "data.json";
+  const blob = Utilities.newBlob(
+    JSON.stringify(obj),
+    "application/json",
+    filename
+  );
+  return {
+    data: `data:application/json;base64,${Utilities.base64Encode(
+      blob.getBytes()
+    )}`,
+    filename: filename,
+  };
+}
+
+function generateStats(): object {
+  return { foo: "bar" };
 }
