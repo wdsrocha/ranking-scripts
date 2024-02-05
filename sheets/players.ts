@@ -1,9 +1,6 @@
 interface PlayerData extends Player {
-  // totalMatches: number | equivalent to totalMatches => matches.length
   totalWins: number;
-  soloWins: number;
-  titles: number; // folhinhas
-  soloTitles: number;
+  titles: number;
   winRate: number;
   tournamentIds: string[]; // tournament key `${date} | ${host}`
 }
@@ -31,9 +28,7 @@ function reloadPlayerSheet(
             nickname,
             matches: [],
             totalWins: 0,
-            soloWins: 0,
             titles: 0,
-            soloTitles: 0,
             winRate: 0,
             tournamentIds: [],
           };
@@ -56,9 +51,7 @@ function reloadPlayerSheet(
       }
 
       if (winners.length === 1) {
-        p.soloWins++;
         if (match.stage === Stage.Finals) {
-          p.soloTitles++;
         }
       }
     });
@@ -69,7 +62,30 @@ function reloadPlayerSheet(
   const countTournaments = (player: PlayerData) =>
     new Set(player.matches.map(getTournamentId)).size;
 
-  const countFavoriteHost = (player: PlayerData): string => {
+  function countDistinctFoes(p: PlayerData) {
+    if (p.nickname === "Sharp") {
+      console.log({
+        foes: new Set(
+          p.matches
+            .flatMap((match) => match.teams)
+            .filter(
+              (team) => !team.players.map(norm).includes(norm(p.nickname))
+            )
+            .flatMap((team) => team.players)
+            .map(norm)
+        ),
+      });
+    }
+    return new Set(
+      p.matches
+        .flatMap((match) => match.teams)
+        .filter((team) => !team.players.map(norm).includes(norm(p.nickname)))
+        .flatMap((team) => team.players)
+        .map(norm)
+    ).size;
+  }
+
+  const countFavoriteHost = (player: PlayerData): [string, number] => {
     return Object.entries(
       Array.from(new Set(player.matches.map(getTournamentId)))
         .map((id) => id.split(" | ")[1])
@@ -80,12 +96,69 @@ function reloadPlayerSheet(
           }),
           {}
         )
-    )
-      .sort((a, b) => b[1] - a[1])
-      .filter(([_, count], i, arr) => count === arr[0][1])
-      .map(([host, count]) => `${host} (${count})`)
-      .join(" e ");
+    ).sort((a, b) => b[1] - a[1])[0];
+    // .sort((a, b) => b[1] - a[1])
+    // .filter(([_, count], i, arr) => count === arr[0][1])
+    // .map(([host, count]) => `${host} (${count})`)
+    // .join(" e ");
   };
+
+  function getRival(p: P): [string, number] {
+    let validMatches = p.matches.filter(
+      (match) =>
+        match.teams.length === 2 &&
+        match.teams.every((team) => team.players.length === 1)
+    );
+
+    // If the player has never played 1v1, we can allow any match
+    if (validMatches.length === 0) {
+      validMatches = p.matches;
+    }
+
+    const results: Record<string, { matchCount: number; foeVictoryCount }> = {};
+    validMatches.forEach((match) => {
+      // Sort teams by rounds won
+      if (match.teams[1].roundsWon > match.teams[0].roundsWon) {
+        match = {
+          ...match,
+          teams: [match.teams[1], match.teams[0]],
+        };
+      }
+
+      const winner = norm(match.teams[0].players[0]);
+      const loser = norm(match.teams[1].players[0]);
+      if (!(winner in results)) {
+        results[winner] = {
+          matchCount: 0,
+          foeVictoryCount: 0,
+        };
+      }
+      results[winner].matchCount++;
+      results[winner].foeVictoryCount += match.teams[1].roundsWon;
+    });
+
+    let foes = p.matches
+      .flatMap((match) => match.teams)
+      .filter((team) => !team.players.map(norm).includes(norm(p.nickname)))
+      .filter((team) => team.players.length === 1);
+
+    // This means that the player has never played 1v1
+    // So we can allow
+
+    const foesCount: Record<string, number> = {};
+    foes.forEach((foe) => {
+      const k = norm(foe.players[0]);
+      if (!(k in foesCount)) {
+        foesCount[k] = 0;
+      }
+      foesCount[k]++;
+    });
+
+    const sorted = Object.entries(foesCount).sort((a, b) => b[1] - a[1]);
+    return sorted?.[0] ?? ["", 0];
+  }
+
+  const distinctFoes = Object.keys(players).length;
 
   const tableDefinitions: [
     string,
@@ -114,9 +187,11 @@ function reloadPlayerSheet(
       (p) => (countTournaments(p) ? p.titles / countTournaments(p) : 0),
       (range) => range.setNumberFormat("00.00%"),
     ],
-    ["Folhinhas (solo)", (p) => p.soloTitles],
-    ["Vitórias (solo)", (p) => p.soloWins],
-    ["Batalha", (p) => countFavoriteHost(p)],
+    ["Batalha mais frequentada", (p) => countFavoriteHost(p)[0]],
+    ["Edições na Batalha mais frequentada", (p) => countFavoriteHost(p)[1]],
+    ["Oponentes diferentes", countDistinctFoes],
+    ["Rival", (p) => getRival(p)[0]],
+    ["Batalhas travadas com rival", (p) => getRival(p)[1]],
   ];
 
   const playerTable = Object.values(players)
@@ -156,4 +231,73 @@ function reloadPlayerSheet(
     const range = sheet.getRange(1, index + 1, sheet.getLastRow() - 1, 1);
     apply?.(range);
   });
+
+  interface Stat {
+    nickname: string;
+
+    // Scene 1
+    matches: number;
+    wins: number;
+    winRate: number;
+    losses: number;
+    lossRate: number;
+
+    // Scene 2
+    tournaments: number;
+    finals: number;
+    titles: number;
+
+    // Scene 3
+    foes: number; // number of different foes
+
+    // Scene 4
+    rival: string; // player with most matches against (1v1)
+
+    // Scene 5
+    weakestFoe: string; // player with most wins against (1v1)
+
+    // Scene 6
+    strongestFoe: string; // player with most losses against (1v1)
+
+    // Scene 7
+    favoriteHost: string; // host with most tournaments participated
+    favoriteHostFreq: number;
+  }
+
+  // Object.values(players).map<Stat>((p) => {
+  //   const n = p.matches.length;
+  //   const w = p.totalWins;
+
+  //   return {
+  //     nickname: p.nickname,
+
+  //     // Scene 1
+  //     matches: n,
+  //     wins: w,
+  //     winRate: w / n,
+  //     losses: n - w,
+  //     lossRate: (n - w) / n,
+
+  //     // Scene 2
+  //     tournaments: countTournaments(p),
+  //     titles: p.titles,
+  //     finals: p.matches.filter((match) => match.stage === Stage.Finals).length,
+
+  //     // Scene 3
+  //     foes: countDistinctFoes(p),
+
+  //     // Scene 4
+  //     rival: "onec",
+
+  //     // Scene 5
+  //     weakestFoe: "",
+
+  //     // Scene 6
+  //     strongestFoe: "",
+
+  //     // Scene 7
+  //     favoriteHost: "",
+  //     tournamentsInFavoriteHost: 0,
+  //   };
+  // });
 }

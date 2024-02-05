@@ -283,9 +283,8 @@ function updateStats() {
   }));
 
   reloadPlayerSheet(ss.getSheetByName("MCs")!, matches);
-  reloadExtraSheet(ss.getSheetByName("Extra")!, matches);
-  reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
-  reloadPersonalRecapSheet(ss.getSheetByName("Recap")!, matches, "Xavier");
+  // reloadExtraSheet(ss.getSheetByName("Extra")!, matches);
+  // reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
 }
 
 function j(d: any) {
@@ -363,7 +362,8 @@ function download() {
 }
 
 function downloadFile() {
-  const obj = generateStats();
+  // const obj = generateStats();
+  const obj = {};
 
   const filename = "data.json";
   const blob = Utilities.newBlob(
@@ -377,8 +377,4 @@ function downloadFile() {
     )}`,
     filename: filename,
   };
-}
-
-function generateStats(): object {
-  return { foo: "bar" };
 }
