@@ -3,6 +3,7 @@ function onOpen() {
   ui.createMenu("Ações")
     .addItem("Atualizar Estatísticas", "updateStats")
     .addItem("Gerar Estatísticas em JSON", "download")
+    .addItem("Adicionar Batalha", "showForm")
     .addToUi();
 }
 
@@ -175,7 +176,7 @@ function updateStats() {
 
   const matches: Match[] = data
     .slice(1)
-    .filter((row) => row[0].getMonth() === 0)
+    // .filter((row) => row[0].getMonth() === 0)
     .map((row) => ({
       date: row[0],
       host: row[1],
