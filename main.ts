@@ -1,7 +1,6 @@
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu("Ações")
-    .addItem("Atualizar Batalhas", "execute")
     .addItem("Atualizar Estatísticas", "updateStats")
     .addItem("Gerar Estatísticas em JSON", "download")
     .addToUi();
@@ -18,6 +17,7 @@ interface Match {
   date: string;
   stage: Stage;
   teams: Team[];
+  isWO?: boolean;
 }
 
 interface Player {
@@ -40,9 +40,26 @@ interface Tournament {
 }
 
 function getTeamsFromMatchResults(data: string): Team[] {
-  if (data.split(" x ").length === 0) {
-    throw new Error(`A batalha "${data}" está em formato inválido`);
+  const isWO = data.includes("(WO)");
+
+  if (!data.includes(" x ")) {
+    // Cases where there was not sufficient MCs or something, so the match was
+    // marked as WO, but we don't know who was supposed to be the opponent
+    if (isWO) {
+      return [
+        {
+          players: data.split("(WO)")[0].trim().split(" e "),
+          roundsWon: 0,
+        },
+      ];
+    } else {
+      throw new Error(
+        `A batalha "${data}" não um ' x '. Não é possível determinar os times.`
+      );
+    }
   }
+
+  data = data.trim().split(".").join().replace("(WO)", "").trim();
 
   // Scoreless
   // E.g.: Blink e Killer* x Kenny e Kennyzin
@@ -78,6 +95,16 @@ function getTeamsFromMatchResults(data: string): Team[] {
     }));
   }
 
+  // With score, double-three
+  if (data.split(" x ").length === 3) {
+    const results = data.split(" x ");
+
+    return results.map((p, i) => ({
+      players: [p.slice(0, p.length - 1).trim()],
+      roundsWon: parseInt(p.slice(-1)),
+    }));
+  }
+
   throw new Error(`A batalha "${data}" está em formato inválido`);
 }
 
@@ -100,128 +127,6 @@ function toStage(rawStage: string): Stage {
   }
 }
 
-function getMatches(
-  data: string[][],
-  { host, date }: { host: string; date: string }
-) {
-  let matches: Match[] = [];
-
-  data.forEach((row, i) => {
-    // Empty line. This shouldn't be happening, but some people did it. Oh well.
-    if (!row[0] && !row[1]) {
-      return;
-    }
-
-    const stage = row[0] ? toStage(row[0]) : matches.slice(-1)[0].stage;
-
-    const matchResult = row
-      .slice(1)
-      .filter((col) => col.length)
-      .join(" x ");
-
-    matches.push({
-      raw: matchResult,
-      date,
-      host,
-      stage,
-      teams: getTeamsFromMatchResults(matchResult),
-    });
-  });
-
-  if (!matches.map((match) => match.stage).includes(Stage.QuarterFinals)) {
-    matches = matches.map((match) => ({
-      ...match,
-      stage:
-        match.stage == Stage.EightFinals ? Stage.QuarterFinals : match.stage,
-    }));
-  }
-
-  return matches;
-}
-
-// Exemplo de uma edição (tournament). Atualmente o código só considera a
-// primeira organização e ignora a edição e os modos.
-// E.g.:
-//       Data          | 27/08/2023 <- Formato de Data no Google Sheets
-//       Organização   | Batalha das Minas     | Batalha da La Prata |
-//       Edição        | Especial de Halloween |                     |
-//                     |                       |                     |
-//       Primeira Fase | Barb* x Giza          |                     |
-//                     | Pedrina* x Dark       |                     |
-//                     | RK* x Atna            |                     |
-//                     | Eva* x Jogadora <- Edição com apenas 3 fases,
-//                                          mas geralmente é 4
-//       Semifinal     | Pedrina* x Barb       |                     |
-//                     | RK* x Eva             |                     |
-//       Final         | RK* x Pedrina         |                     |
-//       Campeão       | RK                    |                     |
-function getTournament(data: string[][]): Tournament {
-  // const date = new Date(data[0][1]).toISOString();
-  const date = data[0][1];
-  const host = data[1][1].trim();
-  const matches = getMatches(data.slice(4, -1), { host, date });
-
-  return {
-    date,
-    host,
-    matches,
-  };
-}
-
-function validateTournament(data: string[][]) {
-  const errors: string[] = [];
-  if (data[0][0] !== "Data") errors.push("Linha 1 deveria ter campo 'Data'");
-  if (!data[0][1]) errors.push("Informe a data");
-  if (data[1][0] !== "Organização")
-    errors.push("Linha 2 deveria ter campo 'Organização'");
-  if (!data[1][1]) errors.push("Informe a organização");
-  if (data[2][0] !== "Edição")
-    errors.push("Linha 3 deveria ter campo 'Edição'");
-  if (data[3][0]) errors.push("Linha 4 deveria estar vazia");
-
-  if (
-    toStage(data[4][0]) !== Stage.EightFinals &&
-    toStage(data[4][0]) !== Stage.SemiFinals
-  ) {
-    errors.push("Linha 5 deveria iniciar com o resultado das batalhas");
-  }
-
-  if (errors.length) {
-    throw new Error(errors.join(" | "));
-  }
-}
-
-function getTournaments(data: string[][]): Tournament[] {
-  const tournaments: Tournament[] = [];
-  for (let i = 0; i < data.length; i++) {
-    if (data[i][0] !== "Data") {
-      continue;
-    }
-
-    let k = 0;
-    // Search until end of current tournament or end of range
-    // End of range can mean two things:
-    // - User selected the begining of another tournament by mistake
-    // - The "Campeao" string is missing for this tournament
-    while (i + k < data.length && data[i + k][0] !== "Campeão") {
-      k++;
-    }
-
-    // Skips on end of range
-    if (i + k === data.length) {
-      continue;
-    }
-
-    const slicedData = data.slice(i, i + k + 1);
-
-    validateTournament(slicedData);
-
-    const tournament = getTournament(slicedData);
-    tournaments.push(tournament);
-  }
-  return tournaments;
-}
-
 function getWinners(match: Match): string[] {
   return match.teams.reduce((prev, curr) => {
     // Assuming draws will never happen...
@@ -232,6 +137,10 @@ function getWinners(match: Match): string[] {
 // Many teams can lose at the same time. For the sake of simplicity, this
 // functions returns a single team of all losers
 function getLosers(match: Match): string[] {
+  if (match.isWO) {
+    return [];
+  }
+
   const losers: string[] = [];
   const maxRoundsWon = Math.max(...match.teams.map((team) => team.roundsWon));
   match.teams.forEach((team) => {
@@ -242,31 +151,21 @@ function getLosers(match: Match): string[] {
   return losers;
 }
 
-function readSheets(sheets: GoogleAppsScript.Spreadsheet.Sheet[]) {
-  return sheets.flatMap((sheet) =>
-    getTournaments(sheet.getDataRange().getValues())
-  );
+function isSoloMatch(match: Match): boolean {
+  return match.teams.every((team) => team.players.length === 1);
 }
 
-function execute() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getActiveSheet();
-
-  // First, consider user selected range
-  let data = sheet.getActiveRange()?.getValues() as string[][];
-  let tournaments = getTournaments(data);
-
-  if (tournaments.length == 0) {
-    tournaments = readSheets(
-      ss.getSheets().filter((sheet) => sheet.getName().includes("✅"))
-    );
+function isTwolala(match: Match): boolean {
+  if (match.isWO || !isSoloMatch(match)) {
+    return false;
   }
 
-  const matches = tournaments.flatMap((tournament) => tournament.matches);
+  const totalRounds = match.teams.reduce(
+    (prev, curr) => prev + curr.roundsWon,
+    0
+  );
 
-  reloadMatchSheet(ss.getSheetByName("Batalhas")!, matches);
-  reloadPlayerSheet(ss.getSheetByName("MCs")!, matches);
-  reloadExtraSheet(ss.getSheetByName("Extra")!, matches);
+  return totalRounds === 2;
 }
 
 function updateStats() {
@@ -274,86 +173,54 @@ function updateStats() {
   const sheet = ss.getSheetByName("Batalhas")!;
   const data = sheet.getDataRange().getValues();
 
-  const matches: Match[] = data.slice(1).map((row) => ({
+  const matches: Match[] = data
+    .slice(1)
+    .filter((row) => row[0].getMonth() === 0)
+    .map((row) => ({
+      date: row[0],
+      host: row[1],
+      stage: row[2],
+      raw: row[3],
+      teams: getTeamsFromMatchResults(row[3]),
+      isWO: row[3].includes("(WO)"),
+    }));
+
+  reloadPlayerSheet(ss.getSheetByName("MCs (janeiro)")!, matches);
+  reloadTournamentSheet(ss.getSheetByName("Edições (janeiro)")!, matches);
+  // reloadExtraSheet(ss.getSheetByName("Extra")!, matches);
+  // reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
+}
+
+function AUX(data: any[][]) {
+  const matches: Match[] = data.map((row) => ({
     date: row[0],
     host: row[1],
     stage: row[2],
     raw: row[3],
     teams: getTeamsFromMatchResults(row[3]),
+    isWO: row[3].includes("(WO)"),
   }));
 
-  reloadPlayerSheet(ss.getSheetByName("MCs")!, matches);
-  // reloadExtraSheet(ss.getSheetByName("Extra")!, matches);
-  // reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
+  return getFurthestStage(matches);
 }
 
 function j(d: any) {
   return JSON.stringify(d, null, "--");
 }
 
+function printTeam(team: Team): string {
+  if (team.players.length === 1) {
+    return team.players[0];
+  }
+
+  const last = team.players.pop();
+  return `${team.players.join(", ")} e ${last}`;
+}
+
 function printMatch(match: Match): string {
   return match.teams
     .map((team) => `${team.players.join(" e ")} (${team.roundsWon})`)
     .join(" x ");
-}
-
-function fixPhaseRow(data: string[][]) {
-  data.forEach((row, i) => {
-    if (toStage(row[0]) !== Stage.Unknown && !row[1]) {
-      // If there is no phase in the next line but there is a match, that means
-      // the phase is incorrectly placed and must go down a line
-      if (!data[i + 1][0] && data[i + 1][1]) {
-        data[i + 1][0] = row[0];
-      }
-
-      data[i][0] = "";
-    }
-  });
-  return data;
-}
-
-function fixMutipleScoreTypes(data: string[][]) {
-  return data.map((row) => {
-    if (row[2] && row[3] && (row[1].includes("*") || row[4].includes("*"))) {
-      return [
-        row[0],
-        row[1].replace("*", ""),
-        row[2],
-        row[3],
-        row[4].replace("*", ""),
-      ];
-    } else {
-      return row;
-    }
-  });
-}
-
-function mergeResultsInSingleColumn(data: string[][]) {
-  return data.map((row) => {
-    if (
-      row[1] &&
-      (row[2].toString() === "2" || row[3].toString() === "2") &&
-      row[4]
-    ) {
-      return [row[0], `${row[1]} ${row[2]} x ${row[3]} ${row[4]}`, "", "", ""];
-    } else {
-      return row;
-    }
-  });
-}
-
-function fix() {
-  const range = SpreadsheetApp.getActiveSpreadsheet()
-    .getActiveSheet()
-    .getActiveRange()!;
-
-  let data = range.getValues();
-  data = fixPhaseRow(data);
-  data = fixMutipleScoreTypes(data);
-  data = mergeResultsInSingleColumn(data);
-
-  range.setValues(data);
-  execute();
 }
 
 function download() {
@@ -377,4 +244,26 @@ function downloadFile() {
     )}`,
     filename: filename,
   };
+}
+
+function WINNERS(input: string) {
+  const winners = getWinners({
+    teams: getTeamsFromMatchResults(input),
+    raw: "",
+    host: "",
+    date: "",
+    stage: Stage.Unknown,
+  });
+  return printTeam({ players: winners, roundsWon: 0 });
+}
+
+function LOSERS(input: string) {
+  const losers = getLosers({
+    teams: getTeamsFromMatchResults(input),
+    raw: "",
+    host: "",
+    date: "",
+    stage: Stage.Unknown,
+  });
+  return printTeam({ players: losers, roundsWon: 0 });
 }

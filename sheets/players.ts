@@ -1,5 +1,6 @@
 interface PlayerData extends Player {
   totalWins: number;
+  twolala: number;
   titles: number;
   winRate: number;
   tournamentIds: string[]; // tournament key `${date} | ${host}`
@@ -28,10 +29,17 @@ function reloadPlayerSheet(
             nickname,
             matches: [],
             totalWins: 0,
+            twolala: 0,
             titles: 0,
             winRate: 0,
             tournamentIds: [],
           };
+
+          // gambiarra por causa de uma edição só com duas fases que não deveria
+          // contar folhinha por ser muito básica
+          if (norm(nickname) === "xavier" || norm(nickname) === "tiktok") {
+            players[norm(nickname)].titles = -1;
+          }
         }
 
         players[norm(nickname)].matches.push(match);
@@ -46,13 +54,13 @@ function reloadPlayerSheet(
     winners.forEach((winner) => {
       const p = players[norm(winner)];
       p.totalWins++;
-      if (match.stage === Stage.Finals) {
-        p.titles++;
+
+      if (isTwolala(match)) {
+        p.twolala++;
       }
 
-      if (winners.length === 1) {
-        if (match.stage === Stage.Finals) {
-        }
+      if (match.stage === Stage.Finals) {
+        p.titles++;
       }
     });
   });
@@ -64,17 +72,17 @@ function reloadPlayerSheet(
 
   function countDistinctFoes(p: PlayerData) {
     if (p.nickname === "Sharp") {
-      console.log({
-        foes: new Set(
-          p.matches
-            .flatMap((match) => match.teams)
-            .filter(
-              (team) => !team.players.map(norm).includes(norm(p.nickname))
-            )
-            .flatMap((team) => team.players)
-            .map(norm)
-        ),
-      });
+      // console.log({
+      //   foes: new Set(
+      //     p.matches
+      //       .flatMap((match) => match.teams)
+      //       .filter(
+      //         (team) => !team.players.map(norm).includes(norm(p.nickname))
+      //       )
+      //       .flatMap((team) => team.players)
+      //       .map(norm)
+      //   ),
+      // });
     }
     return new Set(
       p.matches
@@ -106,23 +114,29 @@ function reloadPlayerSheet(
   function getRival(p: P): [string, number] {
     let validMatches = p.matches.filter(
       (match) =>
+        !match.isWO &&
         match.teams.length === 2 &&
         match.teams.every((team) => team.players.length === 1)
     );
 
-    // If the player has never played 1v1, we can allow any match
+    // If the player has never played 1v1, we can allow any match except WO
     if (validMatches.length === 0) {
-      validMatches = p.matches;
+      validMatches = p.matches.filter((match) => !match.isWO);
     }
 
     const results: Record<string, { matchCount: number; foeVictoryCount }> = {};
     validMatches.forEach((match) => {
       // Sort teams by rounds won
-      if (match.teams[1].roundsWon > match.teams[0].roundsWon) {
-        match = {
-          ...match,
-          teams: [match.teams[1], match.teams[0]],
-        };
+      try {
+        if (match.teams[1].roundsWon > match.teams[0].roundsWon) {
+          match = {
+            ...match,
+            teams: [match.teams[1], match.teams[0]],
+          };
+        }
+      } catch (e) {
+        console.log({ match });
+        throw e;
       }
 
       const winner = norm(match.teams[0].players[0]);
@@ -167,19 +181,57 @@ function reloadPlayerSheet(
   ][] = [
     ["Vulgo", (p) => p.nickname],
     ["Edições", countTournaments],
-    ["Batalhas", (p) => p.matches.length],
-    ["Folhinhas", (p) => p.titles],
+    [
+      "Finais",
+      (p) => p.matches.filter((match) => match.stage === Stage.Finals).length,
+    ],
+    [
+      "Folhinhas",
+      (p) =>
+        countPlayerPositionPerTournament(p, p.matches)[
+          TournamentPosition.Champion
+        ],
+    ],
     [
       "Vice",
       (p) =>
-        p.matches.filter((match) => match.stage === Stage.Finals).length -
-        p.titles,
+        countPlayerPositionPerTournament(p, p.matches)[
+          TournamentPosition.RunnerUp
+        ],
     ],
+    [
+      "Semifinais",
+      (p) =>
+        countPlayerPositionPerTournament(p, p.matches)[
+          TournamentPosition.SemiFinals
+        ],
+    ],
+    [
+      "Quartas",
+      (p) =>
+        countPlayerPositionPerTournament(p, p.matches)[
+          TournamentPosition.SecondStage
+        ],
+    ],
+    [
+      "Oitavas",
+      (p) =>
+        countPlayerPositionPerTournament(p, p.matches)[
+          TournamentPosition.FirstStage
+        ],
+    ],
+    ["Batalhas", (p) => p.matches.length],
     ["Vitórias", (p) => p.totalWins],
     ["Derrotas", (p) => p.matches.length - p.totalWins],
+    ["Twolalas", (p) => p.twolala],
     [
       "Vitórias / Batalhas",
       (p) => (p.matches.length ? p.totalWins / p.matches.length : 0),
+      (range) => range.setNumberFormat("00.00%"),
+    ],
+    [
+      "Twolala / Batalha",
+      (p) => (p.matches.length ? p.twolala / p.matches.length : 0),
       (range) => range.setNumberFormat("00.00%"),
     ],
     [
@@ -187,9 +239,9 @@ function reloadPlayerSheet(
       (p) => (countTournaments(p) ? p.titles / countTournaments(p) : 0),
       (range) => range.setNumberFormat("00.00%"),
     ],
-    ["Batalha mais frequentada", (p) => countFavoriteHost(p)[0]],
-    ["Edições na Batalha mais frequentada", (p) => countFavoriteHost(p)[1]],
-    ["Oponentes diferentes", countDistinctFoes],
+    // ["Batalha mais frequentada", (p) => countFavoriteHost(p)[0]],
+    // ["Edições na Batalha mais frequentada", (p) => countFavoriteHost(p)[1]],
+    // ["Oponentes diferentes", countDistinctFoes],
     ["Rival", (p) => getRival(p)[0]],
     ["Batalhas travadas com rival", (p) => getRival(p)[1]],
   ];
@@ -301,3 +353,118 @@ function reloadPlayerSheet(
   //   };
   // });
 }
+
+enum Champion {
+  Champion = "Campeão",
+}
+
+const STAGE_ORDER: Stage[] = [
+  Stage.Unknown,
+  Stage.EightFinals,
+  Stage.QuarterFinals,
+  Stage.SemiFinals,
+  Stage.Finals,
+];
+
+function getFurthestStage(matches: Match[]): Stage {
+  return matches.reduce<Stage>((prev, curr) => {
+    if (STAGE_ORDER.indexOf(curr.stage) > STAGE_ORDER.indexOf(prev)) {
+      return curr.stage;
+    }
+    return prev;
+  }, Stage.Unknown);
+}
+
+function getTournamentWinners(matches: Match[]): string[] {
+  const tournamentIds = matches.map(getTournamentId);
+  if (tournamentIds.some((id) => id !== tournamentIds[0])) {
+    throw new Error(
+      "getTournamentChampion: More than one tournament in matches"
+    );
+  }
+
+  const finalMatches = matches.filter((match) => match.stage === Stage.Finals);
+  if (finalMatches.length === 0) {
+    return [];
+    throw new Error("getTournamentChampion: No finals in matches");
+  } else if (finalMatches.length > 1) {
+    throw new Error("getTournamentChampion: More than one final in matches");
+  }
+
+  return getWinners(finalMatches[0]);
+}
+
+enum TournamentPosition {
+  FirstStage = "Primeira Fase",
+  SecondStage = "Segunda Fase",
+  SemiFinals = "Semifinal",
+  RunnerUp = "Vice",
+  Champion = "Campeão",
+}
+
+function countPlayerPositionPerTournament(player: Player, matches: Match[]) {
+  const matchesByTournament = groupMatchesByTournament(matches);
+  return Object.entries(matchesByTournament).reduce<
+    Record<TournamentPosition, number>
+  >(
+    (prev, [_, matches]) => {
+      const champions = getTournamentWinners(matches);
+      if (champions.map(norm).includes(norm(player.nickname))) {
+        prev[TournamentPosition.Champion]++;
+        return prev;
+      }
+
+      if (matches.some((match) => match.stage === Stage.Finals)) {
+        prev[TournamentPosition.RunnerUp]++;
+        return prev;
+      }
+
+      if (matches.some((match) => match.stage === Stage.SemiFinals)) {
+        prev[TournamentPosition.SemiFinals]++;
+        return prev;
+      }
+
+      if (matches.some((match) => match.stage === Stage.QuarterFinals)) {
+        prev[TournamentPosition.SecondStage]++;
+        return prev;
+      }
+
+      prev[TournamentPosition.FirstStage]++;
+      return prev;
+    },
+    {
+      [TournamentPosition.FirstStage]: 0,
+      [TournamentPosition.SecondStage]: 0,
+      [TournamentPosition.SemiFinals]: 0,
+      [TournamentPosition.RunnerUp]: 0,
+      [TournamentPosition.Champion]: 0,
+    }
+  );
+}
+
+// function countFurthestStages(player: Player, matches: Match[]) {
+//   const matchesByTournament = groupMatchesByTournament(matches);
+//   return Object.entries(matchesByTournament).reduce<
+//     Record<Stage | Champion, number>
+//   >(
+//     (prev, [_, matches]) => {
+//       const champions = getTournamentWinners(matches);
+//       if (champions.map(norm).includes(norm(player.nickname))) {
+//         prev[Champion.Champion]++;
+//         return prev;
+//       } else {
+//         const stage = getFurthestStage(matches);
+//         prev[stage]++;
+//         return prev;
+//       }
+//     },
+//     {
+//       [Stage.Unknown]: 0,
+//       [Stage.EightFinals]: 0,
+//       [Stage.QuarterFinals]: 0,
+//       [Stage.SemiFinals]: 0,
+//       [Stage.Finals]: 0,
+//       [Champion.Champion]: 0,
+//     }
+//   );
+// }
