@@ -55,7 +55,7 @@ function getTeamsFromMatchResults(data: string): Team[] {
       ];
     } else {
       throw new Error(
-        `A batalha "${data}" não um ' x '. Não é possível determinar os times.`
+        `A batalha "${data}" não contém um ' x '. Não é possível determinar os times.`
       );
     }
   }

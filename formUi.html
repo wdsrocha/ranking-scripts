@@ -3,9 +3,113 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <link href="./output.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
   </head>
-  <body>
-    teste
+  <body class="px-4 mt-4">
+    <div class="flex flex-col gap-y-4">
+      <div>
+        <label
+          for="date"
+          class="block text-sm font-medium leading-6 text-gray-900"
+          >Data</label
+        >
+        <input
+          type="date"
+          id="date"
+          class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+        />
+      </div>
+
+      <div>
+        <label
+          for="host"
+          class="block text-sm font-medium leading-6 text-gray-900"
+          >Organização</label
+        >
+        <div class="mt-2">
+          <input
+            type="text"
+            name="host"
+            id="host"
+            placeholder="Batalha da La Prata"
+            class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label for="eightfinals">Oitavas de Final</label>
+        <textarea
+          name="eightfinals"
+          id="eightfinals"
+          cols="30"
+          rows="9"
+          class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+        ></textarea>
+      </div>
+
+      <div>
+        <label for="quarterfinals">Quartas de Final</label>
+        <textarea
+          name="quarterfinals"
+          id="quarterfinals"
+          cols="30"
+          rows="5"
+          class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+        ></textarea>
+      </div>
+
+      <div>
+        <label for="semifinals">Semifinal</label>
+        <textarea
+          name="semifinals"
+          id="semifinals"
+          cols="30"
+          rows="3"
+          class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+        ></textarea>
+      </div>
+
+      <div>
+        <label
+          for="final"
+          class="block text-sm font-medium leading-6 text-gray-900"
+          >Final</label
+        >
+        <input
+          type="text"
+          id="final"
+          class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+        />
+      </div>
+
+      <button
+        class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+        onclick="submitData()"
+      >
+        Cadastrar
+      </button>
+    </div>
+    <script>
+      function submitData() {
+        var date = document.getElementById("date").value;
+        var host = document.getElementById("host").value;
+        var eightfinals = document.getElementById("eightfinals").value;
+        var quarterfinals = document.getElementById("quarterfinals").value;
+        var semifinals = document.getElementById("semifinals").value;
+        var final = document.getElementById("final").value;
+
+        google.script.run.onSubmit({
+          date,
+          host,
+          eightfinals,
+          quarterfinals,
+          semifinals,
+          final,
+        });
+      }
+    </script>
   </body>
 </html>
