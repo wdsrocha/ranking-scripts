@@ -15,8 +15,88 @@ function onOpen() {
 }
 
 function main() {
-  const matches = readMatches();
-  console.log(matches.slice(25, 45));
+  const matches = readMatches("Batalhas S2");
+
+  const matchesByTournament: Record<string, Match[]> = {};
+  matches.forEach((match) => {
+    if (!(match.tournamentId in matchesByTournament)) {
+      matchesByTournament[match.tournamentId] = [];
+    }
+    matchesByTournament[match.tournamentId].push(match);
+  });
+
+  interface PlayerRankingData {
+    nickname: string;
+    position: number;
+    positionDelta: number;
+    scoreDelta: number;
+    score: number;
+    twolala: number;
+    participation: number;
+    titles: number;
+  }
+
+  Object.values(matchesByTournament).forEach((matches) => {
+    let players: Record<string, PlayerRankingData> = {};
+
+    matches.forEach((match) => {
+      match.teams.forEach((team) => {
+        team.players.forEach((nickname) => {
+          if (!(nickname in players)) {
+            players[nickname] = {
+              nickname,
+              position: 0,
+              positionDelta: 0,
+              scoreDelta: 0,
+              score: 0,
+              twolala: 0,
+              participation: 0,
+              titles: 0,
+            };
+          }
+
+          const player = players[nickname];
+
+          player.participation++;
+
+          if (match.winners.includes(nickname)) {
+            player.score += calculateMatchScore(match).winnerScore;
+            player.twolala += match.isTwolala ? 1 : 0;
+            player.titles += match.stage === Stage.Finals ? 1 : 0;
+          } else {
+            player.score += calculateMatchScore(match).loserScore;
+          }
+        });
+      });
+    });
+
+    // console.log(JSON.stringify(players, null, 2));
+
+    const leaderboard = Object.values(players)
+      // Desative o filtro para verificar se tá tudo certo
+      // .filter((player) => player.getScore() > 0)
+      .sort(function comparePlayers(
+        a: PlayerRankingData,
+        b: PlayerRankingData
+      ) {
+        if (a.score != b.score) {
+          return b.score - a.score;
+        } else if (a.twolala != b.twolala) {
+          return b.twolala - a.twolala;
+        } else if (a.titles != b.titles) {
+          return b.titles - a.titles;
+        } else if (a.participation != b.participation) {
+          return a.participation - b.participation;
+        } else {
+          return 0;
+        }
+      })
+      .map((player, index) => {
+        return { ...player, position: index + 1 };
+      });
+
+    console.log(JSON.stringify(leaderboard, null, 2));
+  });
 }
 
 function printMatch(match: Match): string {
@@ -69,14 +149,14 @@ function calculateMatchScore(match: Match) {
     loserScore = Math.ceil(loserScore / 2);
   }
 
-  console.log(printMatch(match));
-  if (winnerScore) {
-    console.log(`${match.winners.join(" e ")}: +${winnerScore}`);
-  }
-  if (loserScore) {
-    console.log(`${match.losers.join(" e ")}: +${loserScore}`);
-  }
-  console.log("\n");
+  // console.log(printMatch(match));
+  // if (winnerScore) {
+  //   console.log(`${match.winners.join(" e ")}: +${winnerScore}`);
+  // }
+  // if (loserScore) {
+  //   console.log(`${match.losers.join(" e ")}: +${loserScore}`);
+  // }
+  // console.log("\n");
 
   return {
     winnerScore,
