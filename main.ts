@@ -8,8 +8,80 @@ function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu("Ações")
     .addItem("Atualizar ranking", "updateLeaderboard")
-    .addItem("Atualizar players", "updatePlayerSheets")
+    .addItem("Atualizar S1", "updateLeaderboard1")
+    .addItem("Atualizar S2", "updateLeaderboard2")
+    .addItem("Re-calcular pontos", "main")
     .addToUi();
+}
+
+function main() {
+  const matches = readMatches();
+  console.log(matches.slice(25, 45));
+}
+
+function printMatch(match: Match): string {
+  const leftTeam = match.teams[0].players.join(" e ");
+  const leftSide = `${leftTeam} ${match.teams[0].roundsWon}`;
+  const rightTeam = match.teams[1].players.join(" e ");
+  const rightSide = `${match.teams[1].roundsWon} ${rightTeam}`;
+  return [leftSide, rightSide].join(" x ");
+}
+
+function calculateMatchScore(match: Match) {
+  // const players = match.teams
+  //   .flatMap((team) => team.players)
+  //   .reduce<Record<string, number>>((players, nickname) => {
+  //     return { ...players, [nickname]: 0 };
+  //   }, {});
+
+  let winnerScore = 0;
+  if (match.stage === Stage.Unknown) {
+    throw new Error(
+      `Não foi possível calcular o score da batalha "${printMatch(
+        match
+      )}" pois a fase "${match.stage}" é desconhecida.`
+    );
+  } else if (match.stage === Stage.EightFinals) {
+    winnerScore += 1;
+  } else {
+    winnerScore += 2;
+  }
+
+  if (match.isTwolala) {
+    winnerScore += 1;
+  }
+
+  let loserScore = 0;
+
+  let winnerTeamRating = 0;
+  let loserTeamRating = 0;
+  if (match.tournamentId !== 1) {
+    // TODO: get this information
+  }
+
+  if (winnerTeamRating < loserTeamRating) {
+    winnerScore += 1;
+    loserScore -= 1;
+  }
+
+  if (match.teams[0].players.length === 2) {
+    winnerScore = Math.ceil(winnerScore / 2);
+    loserScore = Math.ceil(loserScore / 2);
+  }
+
+  console.log(printMatch(match));
+  if (winnerScore) {
+    console.log(`${match.winners.join(" e ")}: +${winnerScore}`);
+  }
+  if (loserScore) {
+    console.log(`${match.losers.join(" e ")}: +${loserScore}`);
+  }
+  console.log("\n");
+
+  return {
+    winnerScore,
+    loserScore,
+  };
 }
 
 function updatePlayerDataWithMatchResult(
@@ -86,41 +158,50 @@ function generateLeaderboards(players: Record<string, Player>): Player[] {
   );
 }
 
-function readPlayerData(): Record<string, Player> {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const seasonMatches: Match[] = [];
-
-  ss.getSheets().forEach((sheet) => {
-    const name = sheet.getName();
-    if (isTournamentSheetName(name)) {
-      seasonMatches.push(...parseTournamentSheet(sheet));
-    }
-  });
-
-  let players: Record<string, Player> = {};
-
-  seasonMatches.forEach((match) => {
-    updatePlayerDataWithMatchResult(players, match);
-  });
-
-  return players;
+function updateLeaderboard1() {
+  return updateLeaderboard("Batalhas S1");
 }
 
-function updateLeaderboard() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const seasonMatches: Match[] = [];
+function updateLeaderboard2() {
+  return updateLeaderboard("Batalhas S2");
+}
 
-  ss.getSheets().forEach((sheet) => {
-    const name = sheet.getName();
-    if (isTournamentSheetName(name)) {
-      seasonMatches.push(...parseTournamentSheet(sheet));
-    }
-  });
+function generateLeaderboard(
+  sheetPrefix: string = "Placar",
+  tournamentId: number
+) {
+  const matches = readMatches("Batalhas S2");
+
+  const playersByTournament: Record<string, Player>[] = [];
+  // matches.forEach((match) => {
+  //   updatePlayerDataWithMatchResult(players, match)
+}
+
+function updateLeaderboard(sheetName: string = "Batalhas") {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  // const seasonMatches: Match[] = readMatches(sheetName);
+  const seasonMatches: Match[] = readMatches(sheetName).filter(
+    (match) => match.tournamentId === 1
+  );
 
   let players: Record<string, Player> = {};
 
   seasonMatches.forEach((match) => {
-    updatePlayerDataWithMatchResult(players, match);
+    match.teams.forEach((team) => {
+      team.players.forEach((nickname) => {
+        if (!(nickname in players)) {
+          players[nickname] = new Player(nickname);
+        }
+      });
+    });
+
+    const { winnerScore, loserScore } = calculateMatchScore(match);
+
+    match.winners.forEach(
+      (nickname) => (players[nickname].score += winnerScore)
+    );
+    match.losers.forEach((nickname) => (players[nickname].score += loserScore));
+    // updatePlayerDataWithMatchResult(players, match);
   });
 
   const lastTournament = seasonMatches.reduce(
@@ -141,7 +222,7 @@ function updateLeaderboard() {
     previousPlayerData[player.nickname].position = player.position;
   });
 
-  const sheet = ss.getSheetByName("Placar");
+  const sheet = ss.getSheetByName("Novo Placar");
   if (!sheet) {
     return;
   }
@@ -202,36 +283,21 @@ function updateLeaderboard() {
   });
 }
 
-// not ready yet
-function updatePlayerSheets() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const players = generateLeaderboards(readPlayerData());
-
-  let sheet = ss.getSheetByName("MCs");
-  if (!sheet) {
-    sheet = ss.insertSheet("MCs");
+function toStage(rawStage: string): Stage {
+  rawStage = rawStage.toLocaleLowerCase();
+  if (rawStage === "oitavas de final") {
+    return Stage.EightFinals;
+  } else if (rawStage === "quartas de final") {
+    return Stage.QuarterFinals;
+  } else if (
+    rawStage === "semifinal" ||
+    rawStage === "semi final" ||
+    rawStage === "semifinais"
+  ) {
+    return Stage.SemiFinals;
+  } else if (rawStage === "final") {
+    return Stage.Finals;
+  } else {
+    return Stage.Unknown;
   }
-  sheet.clearContents();
-
-  const totalTournaments = ss.getSheets().reduce((prev, curr) => {
-    return prev + +isTournamentSheetName(curr.getName());
-  }, 0);
-
-  players.forEach((player, index) => {
-    const values = [
-      [player.nickname, ""],
-      [`RANK #${player.position}`, `${player.getScore()} pontos`],
-      ["Títulos", player.getTournamentsWon()],
-      ["Vitórias", player.getWins()],
-      ["Derrotas", player.getDefeats()],
-      ["Twolalas", player.getPerfectWins()],
-      // TODO: Fix participation bug, repeating in random places
-      ["Participações", `${player.getParticipations()}/${totalTournaments}`],
-      ["", ""],
-    ];
-
-    sheet!
-      .getRange(index * values.length + 1, 1, values.length, 2)
-      .setValues(values);
-  });
 }

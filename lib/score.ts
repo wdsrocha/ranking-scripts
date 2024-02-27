@@ -7,17 +7,20 @@ interface Match {
   tournamentId: number;
   stage: Stage;
   teams: Team[];
+  winners: string[];
 }
 
 enum Stage {
-  EightFinals,
-  QuarterFinals,
-  SemiFinals,
-  Finals,
+  Unknown = "Fase desconhecida",
+  EightFinals = "Oitavas de final",
+  QuarterFinals = "Quartas de final",
+  SemiFinals = "Semifinal",
+  Finals = "Final",
 }
 
 class Player {
   nickname: string;
+  score: number;
   tournaments: {
     [tournament: number]: {
       matches: Match[];
@@ -33,20 +36,13 @@ class Player {
   constructor(nickname: string) {
     this.nickname = nickname;
     this.tournaments = {};
+    this.score = 0;
   }
 
   getTournamentScore(tournamentId: number): number {
     const tournament = this.tournaments[tournamentId];
     if (!tournament) {
-      if (this.nickname === "Manogê" && tournamentId === 3) {
-        return -1;
-      } else if (this.nickname === "Mano P" && tournamentId === 6) {
-        return -1;
-      } else if (this.nickname === "James" && tournamentId === 8) {
-        return -1;
-      } else {
-        return 0;
-      }
+      return 0;
     }
 
     let score = 0;
@@ -77,14 +73,18 @@ class Player {
   }
 
   getScore(): number {
-    // TODO: Refactor this into max number of existing tournaments This changed
-    // because it would skip tournaments where the player missed Which shouldn't
-    // happen, as there is a special case where the player loses 1 point if it
-    // misses a tournament while staying in the top 4
-    return [0, 1, 2, 3, 4, 5, 6, 7, 8].reduce((score, id) => {
-      return score + this.getTournamentScore(id);
-    }, 0);
+    return this.score;
   }
+
+  // getScore(): number {
+  //   TODO: Refactor this into max number of existing tournaments This changed
+  //   because it would skip tournaments where the player missed Which shouldn't
+  //   happen, as there is a special case where the player loses 1 point if it
+  //   misses a tournament while staying in the top 4
+  //   return [0, 1, 2, 3, 4, 5, 6, 7, 8].reduce((score, id) => {
+  //     return score + this.getTournamentScore(id);
+  //   }, 0);
+  // }
 
   getScoreUpTo(tournamentId: number): number {
     return [0, 1, 2, 3, 4, 5, 6, 7, 8].reduce((score, id) => {
@@ -159,62 +159,4 @@ function comparePlayers(a: Player, b: Player) {
   }
 
   return 0;
-}
-
-function getStageFromIndex(index: number): Stage {
-  if (index < 8) {
-    return Stage.EightFinals;
-  } else if (index < 12) {
-    return Stage.QuarterFinals;
-  } else if (index < 14) {
-    return Stage.SemiFinals;
-  } else {
-    return Stage.Finals;
-  }
-}
-
-function isTournamentSheetName(name: string): boolean {
-  return name.match(/^Rodada \d\d$/) !== null;
-}
-
-function parseTournamentSheet(
-  sheet: GoogleAppsScript.Spreadsheet.Sheet
-): Match[] {
-  if (!isTournamentSheetName(sheet.getName())) {
-    SpreadsheetApp.getUi().alert("Nome da planilha inválido");
-  }
-
-  const tournamentId = parseInt(sheet.getName().split(" ")[1]!);
-
-  const range = sheet.getRange(3, 2, 15, 4);
-  const values = range.getValues() as [string, number, number, string][];
-
-  const matches: Match[] = [];
-
-  // Only 1x1
-  values.forEach((row, i) => {
-    // string, number, number, string
-    const [team1, roundsWon1, roundsWon2, team2] = row;
-
-    // Se não der match no regex, ainda assim vira um array de um só item
-    const players1 = team1.split(" e ");
-    const players2 = team2.split(" e ");
-
-    matches.push({
-      tournamentId,
-      stage: getStageFromIndex(i),
-      teams: [
-        {
-          roundsWon: roundsWon1,
-          players: players1,
-        },
-        {
-          roundsWon: roundsWon2,
-          players: players2,
-        },
-      ],
-    });
-  });
-
-  return matches;
 }
