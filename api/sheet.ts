@@ -44,18 +44,19 @@ function parseMatchResults(
     // Cases where there was not sufficient MCs or something, so the match was
     // marked as WO, but we don't know who was supposed to be the opponent
     if (isWO) {
+      const teams = [
+        {
+          players: raw.split(", ").join(" e ").split(" e "),
+          roundsWon: 0,
+        },
+      ];
       return {
         isWO,
         isTwolala: false,
-        winners: [], //TODO FIX
+        winners: getWinners(teams), //TODO FIX
         losers: [],
-        mode: "Solo", // TODO FIX
-        teams: [
-          {
-            players: raw.split(" e "),
-            roundsWon: 0,
-          },
-        ],
+        mode: getMode(teams),
+        teams,
       };
     } else {
       throw new Error(
