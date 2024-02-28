@@ -1,8 +1,4 @@
-enum Delta {
-  NONE = "",
-  UP = "▲",
-  DOWN = "▼",
-}
+const MATCHES_SHEET = "Batalhas";
 
 enum Stage {
   Unknown = "Fase desconhecida",
@@ -18,7 +14,7 @@ function onOpen() {
 }
 
 function main() {
-  const matches = readMatches("Batalhas S2");
+  const matches = readMatches(MATCHES_SHEET);
 
   let players: Record<string, Player> = {};
 
@@ -50,7 +46,7 @@ function main() {
   let prevPlayers: Record<string, Player> = JSON.parse(JSON.stringify(players));
   const matchScoreClarifications: MatchScoreClarification[] = [];
   Object.entries(matchesByTournament).forEach(([id, matches]) => {
-    const hasPlayerParticipated: Record<string, boolean> = {};
+    const participants: Set<string> = new Set();
     matches.forEach((match) => {
       const { winnerScore, loserScore, clarification } = calculateMatchScore(
         match,
@@ -63,7 +59,7 @@ function main() {
       match.teams.forEach((team) => {
         team.players.forEach((nickname) => {
           const player = players[nickname];
-          hasPlayerParticipated[nickname] = true;
+          participants.add(nickname);
 
           if (match.winners.includes(nickname)) {
             player.score += winnerScore;
@@ -76,19 +72,31 @@ function main() {
       });
     });
 
-    Object.entries(hasPlayerParticipated).forEach(
-      ([nickname, hasParticipated]) => {
-        if (hasParticipated) {
-          players[nickname].participation++;
-        }
-      }
-    );
+    participants.forEach((nickname) => {
+      players[nickname].participation++;
+    });
 
-    // console.log(JSON.stringify(players, null, 2));
+    Object.values(players)
+      .filter(
+        (player) =>
+          player.position >= 1 &&
+          player.position <= 4 &&
+          !participants.has(player.nickname)
+      )
+      .forEach((player) => {
+        player.score -= 1;
+        console.log(
+          `-1 para ${player.nickname} pois faltou na rodada ${id} enquanto estava no Top 4 (posição ${player.position})`
+        );
+      });
 
     const leaderboard = Object.values(players)
       // Desative o filtro para verificar se tá tudo certo
-      .filter((player) => player.score > 0)
+      // A segunda parte da condição serve para incluir MCs que tinham 1 ponto e
+      // perderam pela regra da vitória do desfavorecido
+      .filter(
+        (player) => player.score > 0 || prevPlayers[player.nickname].score > 0
+      )
       .sort(function comparePlayers(a: Player, b: Player) {
         if (a.score != b.score) {
           return b.score - a.score;
@@ -103,10 +111,9 @@ function main() {
         }
       })
       .map((player, index) => {
-        return { ...player, position: index + 1 };
+        player.position = index + 1;
+        return player;
       });
-
-    // console.log(JSON.stringify(leaderboard, null, 2));
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(`Placar ${id.padStart(2, "0")}`);
@@ -128,6 +135,19 @@ function main() {
       }
 
       let positionDeltaText = "";
+      const prevPosition = prevPlayers[player.nickname].position;
+      const positionDelta = Math.abs(player.position - prevPosition);
+      if (prevPosition === 0) {
+        if (player.score > 0) {
+          positionDeltaText = `▲`;
+        } else {
+          positionDeltaText = "";
+        }
+      } else if (player.position < prevPosition) {
+        positionDeltaText = `▲ ${positionDelta}`;
+      } else if (player.position > prevPosition) {
+        positionDeltaText = `▼ ${positionDelta}`;
+      }
 
       range.setValues([
         [
@@ -136,9 +156,9 @@ function main() {
           positionDeltaText,
           scoreDeltaText,
           player.score,
-          player.twolala,
+          player.twolala ? player.twolala : "",
           player.participation,
-          player.titles,
+          "🏆".repeat(player.titles),
         ],
       ]);
     });
@@ -146,7 +166,7 @@ function main() {
     prevPlayers = JSON.parse(JSON.stringify(players));
   });
 
-  annotateClarifications(matchScoreClarifications, "Batalhas S2");
+  addClarifications(matchScoreClarifications, MATCHES_SHEET);
 }
 
 function calculateMatchScore(

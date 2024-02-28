@@ -141,7 +141,7 @@ function readMatches(sheetName: string = "Batalhas"): Match[] {
   return matches;
 }
 
-function annotateClarifications(
+function addClarifications(
   clarifications: MatchScoreClarification[],
   sheetName: string = "Batalhas"
 ): void {
