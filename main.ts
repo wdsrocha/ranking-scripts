@@ -48,14 +48,17 @@ function main() {
   });
 
   let prevPlayers: Record<string, Player> = JSON.parse(JSON.stringify(players));
+  const matchScoreClarifications: MatchScoreClarification[] = [];
   Object.entries(matchesByTournament).forEach(([id, matches]) => {
     const hasPlayerParticipated: Record<string, boolean> = {};
     matches.forEach((match) => {
-      const { winnerScore, loserScore } = calculateMatchScore(
+      const { winnerScore, loserScore, clarification } = calculateMatchScore(
         match,
         prevPlayers,
-        true
+        players
+        // true
       );
+      matchScoreClarifications.push({ matchId: match.id, clarification });
 
       match.teams.forEach((team) => {
         team.players.forEach((nickname) => {
@@ -142,20 +145,22 @@ function main() {
 
     prevPlayers = JSON.parse(JSON.stringify(players));
   });
+
+  annotateClarifications(matchScoreClarifications, "Batalhas S2");
 }
 
 function calculateMatchScore(
   match: Match,
   lastTournamentScores: Record<string, Pick<Player, "score">>,
+  currTournamentScores: Record<string, Pick<Player, "score">>,
   verbose: boolean = false
-) {
-  // const players = match.teams
-  //   .flatMap((team) => team.players)
-  //   .reduce<Record<string, number>>((players, nickname) => {
-  //     return { ...players, [nickname]: 0 };
-  //   }, {});
+): { winnerScore: number; loserScore: number; clarification: string } {
+  let clarification = `${match.tournamentId}ª Rodada - ${
+    match.id + 1
+  }ª Batalha da Temporada\n\n`;
+  clarification += `${match.raw} (${match.stage})\n`;
+  clarification += "\n";
 
-  let messages = `Batalha ${match.id}: ${match.raw}\n`;
   const winners = match.winners.join(" e ");
   const losers = match.losers.join(" e ");
 
@@ -166,58 +171,62 @@ function calculateMatchScore(
     );
   } else if (match.stage === Stage.EightFinals) {
     winnerScore += 1;
-    messages += `${winners}: +1 (venceu ${match.stage})\n`;
+    clarification += `${winners}: +1\n`;
   } else {
     winnerScore += 2;
-    messages += `${winners}: +2 (venceu ${match.stage})\n`;
+    clarification += `${winners}: +2\n`;
   }
 
   if (match.isTwolala) {
     winnerScore += 1;
-    messages += `${winners}: +1 (twolala)\n`;
+    clarification += `${winners}: +1 (twolala)\n`;
   }
 
   let loserScore = 0;
 
-  let winnerTeamRating = Math.floor(
-    match.winners.reduce((prev, nickname) => {
-      return prev + lastTournamentScores[nickname].score;
-    }, 0) / Math.max(match.winners.length, 1)
-  );
-  let loserTeamRating = Math.floor(
-    match.losers.reduce((prev, nickname) => {
-      return prev + lastTournamentScores[nickname].score;
-    }, 0) / Math.max(match.losers.length, 1)
-  );
-
-  if (winnerTeamRating < loserTeamRating) {
-    winnerScore += 1;
-    loserScore -= 1;
-
-    messages += `${winners} (${winnerTeamRating}) venceu e roubou 1 ponto de ${losers} (${loserTeamRating})\n`;
-  }
-
-  if (match.teams[0].players.length === 2) {
+  if (match.mode === "Duo") {
     winnerScore = Math.ceil(winnerScore / 2);
-    loserScore = Math.ceil(loserScore / 2);
-    messages += `Pontuação dividida por 2 por ser uma batalha de dupla\n`;
+    clarification += `\nBatalha de Dupla: Pontuação dividida por 2 e arredondada para cima\n`;
   }
 
-  messages += `Pontuação final:\n`;
-  messages += `${winners}: +${winnerScore}\n`;
+  if (match.mode === "Solo" && !match.isWO) {
+    const winnerRating = lastTournamentScores[match.winners[0]].score;
+    const loserRating = lastTournamentScores[match.losers[0]].score;
+    if (winnerRating < loserRating) {
+      winnerScore += 1;
+      loserScore -= 1;
+
+      clarification += `\nVitória do desfavorecido: ${winners} rouba 1 ponto de ${losers}\n`;
+    }
+  }
+
+  clarification += "\n";
+  clarification += `Pontuação final:\n`;
+
+  match.winners.forEach((winner) => {
+    const prevScore = currTournamentScores[winner].score;
+    const currScore = prevScore + winnerScore;
+    clarification += `${winner}: ${prevScore} -> ${currScore} (+${winnerScore})\n`;
+  });
+
   if (loserScore) {
-    messages += `${losers}: ${loserScore}\n`;
+    match.losers.forEach((loser) => {
+      const prevScore = currTournamentScores[loser].score;
+      const currScore = prevScore + loserScore;
+      clarification += `${loser}: ${prevScore} -> ${currScore} (${loserScore})\n`;
+    });
   }
 
-  messages += "\n";
+  clarification = clarification.slice(0, -1); // remove last newline
 
   if (verbose) {
-    console.log(messages);
+    console.log(clarification);
   }
 
   return {
     winnerScore,
     loserScore,
+    clarification,
   };
 }
 

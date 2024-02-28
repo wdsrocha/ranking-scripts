@@ -22,9 +22,19 @@ function isTwolala(match: Match): boolean {
   return match.teams.reduce((prev, curr) => prev + curr.roundsWon, 0) === 2;
 }
 
+function getMode(teams: Team[]): Mode {
+  if (teams.length === 3) {
+    return "Double-Three";
+  }
+
+  const n = teams[0].players.length;
+
+  return n === 1 ? "Solo" : n === 2 ? "Duo" : "Trio";
+}
+
 function parseMatchResults(
   raw: string
-): Pick<Match, "teams" | "winners" | "losers" | "isWO" | "isTwolala"> {
+): Pick<Match, "teams" | "winners" | "losers" | "isWO" | "isTwolala" | "mode"> {
   raw = raw.replace(".", "").trim();
 
   const isWO = raw.includes("(WO)");
@@ -39,6 +49,7 @@ function parseMatchResults(
         isTwolala: false,
         winners: [], //TODO FIX
         losers: [],
+        mode: "Solo", // TODO FIX
         teams: [
           {
             players: raw.split(" e "),
@@ -73,6 +84,7 @@ function parseMatchResults(
 
     return {
       isWO,
+      mode: getMode(teams),
       isTwolala: isTwolala({ teams } as Match),
       winners: getWinners(teams),
       losers: getLosers({ teams } as Match),
@@ -91,6 +103,7 @@ function parseMatchResults(
 
     return {
       isWO,
+      mode: getMode(teams),
       isTwolala: isTwolala({ teams } as Match),
       winners: getWinners(teams),
       losers: getLosers({ teams } as Match),
@@ -106,7 +119,7 @@ function readMatches(sheetName: string = "Batalhas"): Match[] {
   const sheet = ss.getSheetByName(sheetName);
 
   if (!sheet) {
-    throw new Error("Planilha de batalhas não encontrada");
+    throw new Error(`Planilha "${sheetName}" não encontrada`);
   }
 
   const matches: Match[] = sheet
@@ -125,4 +138,20 @@ function readMatches(sheetName: string = "Batalhas"): Match[] {
     });
 
   return matches;
+}
+
+function annotateClarifications(
+  clarifications: MatchScoreClarification[],
+  sheetName: string = "Batalhas"
+): void {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+
+  if (!sheet) {
+    throw new Error(`Planilha "${sheetName}" não encontrada`);
+  }
+
+  clarifications.forEach((x) => {
+    sheet.getRange(x.matchId + 2, 4).setValue(x.clarification);
+  });
 }
