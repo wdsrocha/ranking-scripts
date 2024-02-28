@@ -124,9 +124,10 @@ function readMatches(sheetName: string = "Batalhas"): Match[] {
     .getRange(2, 1, sheet.getLastRow(), 3)
     .getValues()
     .filter((row) => row[0] !== "" && row[1] !== "" && row[2] !== "")
-    .map((row) => {
+    .map((row, id) => {
       const [tournamentId, stage, raw] = row;
       return {
+        id,
         tournamentId: +tournamentId,
         stage: toStage(stage),
         raw,

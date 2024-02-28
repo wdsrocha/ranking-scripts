@@ -4,6 +4,15 @@ enum Delta {
   DOWN = "▼",
 }
 
+interface PlayerRankingData {
+  nickname: string;
+  position: number;
+  score: number;
+  twolala: number;
+  participation: number;
+  titles: number;
+}
+
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu("Ações")
@@ -17,6 +26,25 @@ function onOpen() {
 function main() {
   const matches = readMatches("Batalhas S2");
 
+  let players: Record<string, PlayerRankingData> = {};
+
+  matches.forEach((match) => {
+    match.teams.forEach((team) => {
+      team.players.forEach((nickname) => {
+        if (!(nickname in players)) {
+          players[nickname] = {
+            nickname,
+            position: 0,
+            score: 0,
+            twolala: 0,
+            participation: 0,
+            titles: 0,
+          };
+        }
+      });
+    });
+  });
+
   const matchesByTournament: Record<string, Match[]> = {};
   matches.forEach((match) => {
     if (!(match.tournamentId in matchesByTournament)) {
@@ -25,56 +53,47 @@ function main() {
     matchesByTournament[match.tournamentId].push(match);
   });
 
-  interface PlayerRankingData {
-    nickname: string;
-    position: number;
-    positionDelta: number;
-    scoreDelta: number;
-    score: number;
-    twolala: number;
-    participation: number;
-    titles: number;
-  }
-
-  Object.values(matchesByTournament).forEach((matches) => {
-    let players: Record<string, PlayerRankingData> = {};
-
+  let prevPlayers: Record<string, PlayerRankingData> = JSON.parse(
+    JSON.stringify(players)
+  );
+  Object.entries(matchesByTournament).forEach(([id, matches]) => {
+    const hasPlayerParticipated: Record<string, boolean> = {};
     matches.forEach((match) => {
+      const { winnerScore, loserScore } = calculateMatchScore(
+        match,
+        prevPlayers,
+        true
+      );
+
       match.teams.forEach((team) => {
         team.players.forEach((nickname) => {
-          if (!(nickname in players)) {
-            players[nickname] = {
-              nickname,
-              position: 0,
-              positionDelta: 0,
-              scoreDelta: 0,
-              score: 0,
-              twolala: 0,
-              participation: 0,
-              titles: 0,
-            };
-          }
-
           const player = players[nickname];
-
-          player.participation++;
+          hasPlayerParticipated[nickname] = true;
 
           if (match.winners.includes(nickname)) {
-            player.score += calculateMatchScore(match).winnerScore;
+            player.score += winnerScore;
             player.twolala += match.isTwolala ? 1 : 0;
             player.titles += match.stage === Stage.Finals ? 1 : 0;
           } else {
-            player.score += calculateMatchScore(match).loserScore;
+            player.score += loserScore;
           }
         });
       });
     });
 
+    Object.entries(hasPlayerParticipated).forEach(
+      ([nickname, hasParticipated]) => {
+        if (hasParticipated) {
+          players[nickname].participation++;
+        }
+      }
+    );
+
     // console.log(JSON.stringify(players, null, 2));
 
     const leaderboard = Object.values(players)
       // Desative o filtro para verificar se tá tudo certo
-      // .filter((player) => player.getScore() > 0)
+      .filter((player) => player.score > 0)
       .sort(function comparePlayers(
         a: PlayerRankingData,
         b: PlayerRankingData
@@ -95,7 +114,44 @@ function main() {
         return { ...player, position: index + 1 };
       });
 
-    console.log(JSON.stringify(leaderboard, null, 2));
+    // console.log(JSON.stringify(leaderboard, null, 2));
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(`Placar ${id.padStart(2, "0")}`);
+    if (!sheet) {
+      return;
+    }
+
+    sheet.getRange(3, 1, 100, 8).clearContent();
+
+    leaderboard.map((player, index) => {
+      const range = sheet.getRange(index + 3, 1, 1, 8);
+
+      const scoreDelta = player.score - prevPlayers[player.nickname].score;
+      let scoreDeltaText = "";
+      if (scoreDelta > 0) {
+        scoreDeltaText = `+${scoreDelta}`;
+      } else if (scoreDelta < 0) {
+        scoreDeltaText = scoreDelta.toString(); // comes with minus sign
+      }
+
+      let positionDeltaText = "";
+
+      range.setValues([
+        [
+          player.position,
+          player.nickname,
+          positionDeltaText,
+          scoreDeltaText,
+          player.score,
+          player.twolala,
+          player.participation,
+          player.titles,
+        ],
+      ]);
+    });
+
+    prevPlayers = JSON.parse(JSON.stringify(players));
   });
 }
 
@@ -107,12 +163,20 @@ function printMatch(match: Match): string {
   return [leftSide, rightSide].join(" x ");
 }
 
-function calculateMatchScore(match: Match) {
+function calculateMatchScore(
+  match: Match,
+  lastTournamentScores: Record<string, Pick<PlayerRankingData, "score">>,
+  verbose: boolean = false
+) {
   // const players = match.teams
   //   .flatMap((team) => team.players)
   //   .reduce<Record<string, number>>((players, nickname) => {
   //     return { ...players, [nickname]: 0 };
   //   }, {});
+
+  let messages = `Batalha ${match.id}: ${match.raw}\n`;
+  const winners = match.winners.join(" e ");
+  const losers = match.losers.join(" e ");
 
   let winnerScore = 0;
   if (match.stage === Stage.Unknown) {
@@ -123,40 +187,54 @@ function calculateMatchScore(match: Match) {
     );
   } else if (match.stage === Stage.EightFinals) {
     winnerScore += 1;
+    messages += `${winners}: +1 (venceu ${match.stage})\n`;
   } else {
     winnerScore += 2;
+    messages += `${winners}: +2 (venceu ${match.stage})\n`;
   }
 
   if (match.isTwolala) {
     winnerScore += 1;
+    messages += `${winners}: +1 (twolala)\n`;
   }
 
   let loserScore = 0;
 
-  let winnerTeamRating = 0;
-  let loserTeamRating = 0;
-  if (match.tournamentId !== 1) {
-    // TODO: get this information
-  }
+  let winnerTeamRating = Math.floor(
+    match.winners.reduce((prev, nickname) => {
+      return prev + lastTournamentScores[nickname].score;
+    }, 0) / Math.max(match.winners.length, 1)
+  );
+  let loserTeamRating = Math.floor(
+    match.losers.reduce((prev, nickname) => {
+      return prev + lastTournamentScores[nickname].score;
+    }, 0) / Math.max(match.losers.length, 1)
+  );
 
   if (winnerTeamRating < loserTeamRating) {
     winnerScore += 1;
     loserScore -= 1;
+
+    messages += `${winners} (${winnerTeamRating}) venceu e roubou 1 ponto de ${losers} (${loserTeamRating})\n`;
   }
 
   if (match.teams[0].players.length === 2) {
     winnerScore = Math.ceil(winnerScore / 2);
     loserScore = Math.ceil(loserScore / 2);
+    messages += `Pontuação dividida por 2 por ser uma batalha de dupla\n`;
   }
 
-  // console.log(printMatch(match));
-  // if (winnerScore) {
-  //   console.log(`${match.winners.join(" e ")}: +${winnerScore}`);
-  // }
-  // if (loserScore) {
-  //   console.log(`${match.losers.join(" e ")}: +${loserScore}`);
-  // }
-  // console.log("\n");
+  messages += `Pontuação final:\n`;
+  messages += `${winners}: +${winnerScore}\n`;
+  if (loserScore) {
+    messages += `${losers}: ${loserScore}\n`;
+  }
+
+  messages += "\n";
+
+  if (verbose) {
+    console.log(messages);
+  }
 
   return {
     winnerScore,
@@ -275,12 +353,12 @@ function updateLeaderboard(sheetName: string = "Batalhas") {
       });
     });
 
-    const { winnerScore, loserScore } = calculateMatchScore(match);
+    // const { winnerScore, loserScore } = calculateMatchScore(match);
 
-    match.winners.forEach(
-      (nickname) => (players[nickname].score += winnerScore)
-    );
-    match.losers.forEach((nickname) => (players[nickname].score += loserScore));
+    // match.winners.forEach(
+    //   (nickname) => (players[nickname].score += winnerScore)
+    // );
+    // match.losers.forEach((nickname) => (players[nickname].score += loserScore));
     // updatePlayerDataWithMatchResult(players, match);
   });
 
