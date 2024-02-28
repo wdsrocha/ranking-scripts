@@ -1,14 +1,3 @@
-interface Match {
-  tournamentId: number; // Foreign key
-  raw: string;
-  teams: Team[];
-  stage: Stage;
-  winners: string[]; // Generated from teams
-  losers: string[]; // Generated from teams
-  isWO: boolean;
-  isTwolala: boolean;
-}
-
 function getWinners(teams: Team[]): string[] {
   return teams.reduce((prev, curr) => {
     // Assuming draws will never happen...
