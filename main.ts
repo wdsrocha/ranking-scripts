@@ -176,7 +176,7 @@ function updateStats() {
 
   const matches: Match[] = data
     .slice(1)
-    // .filter((row) => row[0].getMonth() === 0)
+    .filter((row) => row[0].getMonth() === 1)
     .map((row) => ({
       date: row[0],
       host: row[1],
@@ -186,8 +186,8 @@ function updateStats() {
       isWO: row[3].includes("(WO)"),
     }));
 
-  reloadPlayerSheet(ss.getSheetByName("MCs (janeiro)")!, matches);
-  reloadTournamentSheet(ss.getSheetByName("Edições (janeiro)")!, matches);
+  reloadPlayerSheet(ss.getSheetByName("MCs (fevereiro)")!, matches);
+  reloadTournamentSheet(ss.getSheetByName("Edições (fevereiro)")!, matches);
   // reloadExtraSheet(ss.getSheetByName("Extra")!, matches);
   // reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
 }
