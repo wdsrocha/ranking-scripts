@@ -41,7 +41,9 @@ interface Tournament {
 }
 
 function getTeamsFromMatchResults(data: string): Team[] {
+  data = data.replace(".", "").trim();
   const isWO = data.includes("(WO)");
+  data = data.replace(/\([^()]*\)/g, "").trim();
 
   if (!data.includes(" x ")) {
     // Cases where there was not sufficient MCs or something, so the match was
@@ -49,7 +51,7 @@ function getTeamsFromMatchResults(data: string): Team[] {
     if (isWO) {
       return [
         {
-          players: data.split("(WO)")[0].trim().split(" e "),
+          players: data.replace(", ", " e ").split(" e "),
           roundsWon: 0,
         },
       ];
@@ -59,8 +61,6 @@ function getTeamsFromMatchResults(data: string): Team[] {
       );
     }
   }
-
-  data = data.trim().split(".").join().replace("(WO)", "").trim();
 
   // Scoreless
   // E.g.: Blink e Killer* x Kenny e Kennyzin
