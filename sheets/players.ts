@@ -4,6 +4,7 @@ interface PlayerData extends Player {
   titles: number;
   winRate: number;
   tournamentIds: string[]; // tournament key `${date} | ${host}`
+  countByPosition: Record<TournamentPosition, number>;
 }
 
 function norm(nickname: string) {
@@ -33,13 +34,17 @@ function reloadPlayerSheet(
             titles: 0,
             winRate: 0,
             tournamentIds: [],
+            countByPosition: {
+              [TournamentPosition.FirstStage]: 0,
+              [TournamentPosition.SecondStage]: 0,
+              [TournamentPosition.SemiFinals]: 0,
+              [TournamentPosition.RunnerUp]: 0,
+              [TournamentPosition.Champion]: 0,
+            },
           };
 
           // gambiarra por causa de uma edição só com duas fases que não deveria
           // contar folhinha por ser muito básica
-          if (norm(nickname) === "xavier" || norm(nickname) === "tiktok") {
-            players[norm(nickname)].titles = -1;
-          }
         }
 
         players[norm(nickname)].matches.push(match);
@@ -66,6 +71,13 @@ function reloadPlayerSheet(
   });
 
   type P = PlayerData;
+
+  Object.entries(players).forEach(([_, player]) => {
+    player.countByPosition = countPlayerPositionPerTournament(
+      player,
+      player.matches
+    );
+  });
 
   const countTournaments = (player: PlayerData) =>
     new Set(player.matches.map(getTournamentId)).size;
@@ -185,40 +197,13 @@ function reloadPlayerSheet(
       "Finais",
       (p) => p.matches.filter((match) => match.stage === Stage.Finals).length,
     ],
+    ["Folhinhas", (p) => p.countByPosition["Campeão"]],
+    ["Vice", (p) => p.countByPosition["Vice"]],
+    ["Semifinais", (p) => p.countByPosition["Semifinal"]],
     [
-      "Folhinhas",
+      "1ª e 2ª Fase",
       (p) =>
-        countPlayerPositionPerTournament(p, p.matches)[
-          TournamentPosition.Champion
-        ],
-    ],
-    [
-      "Vice",
-      (p) =>
-        countPlayerPositionPerTournament(p, p.matches)[
-          TournamentPosition.RunnerUp
-        ],
-    ],
-    [
-      "Semifinais",
-      (p) =>
-        countPlayerPositionPerTournament(p, p.matches)[
-          TournamentPosition.SemiFinals
-        ],
-    ],
-    [
-      "Quartas",
-      (p) =>
-        countPlayerPositionPerTournament(p, p.matches)[
-          TournamentPosition.SecondStage
-        ],
-    ],
-    [
-      "Oitavas",
-      (p) =>
-        countPlayerPositionPerTournament(p, p.matches)[
-          TournamentPosition.FirstStage
-        ],
+        p.countByPosition["Segunda Fase"] + p.countByPosition["Primeira Fase"],
     ],
     ["Batalhas", (p) => p.matches.length],
     ["Vitórias", (p) => p.totalWins],
@@ -230,8 +215,8 @@ function reloadPlayerSheet(
       (range) => range.setNumberFormat("00.00%"),
     ],
     [
-      "Twolala / Batalha",
-      (p) => (p.matches.length ? p.twolala / p.matches.length : 0),
+      "Twolala / Vitória",
+      (p) => (p.matches.length ? p.twolala / p.totalWins : 0),
       (range) => range.setNumberFormat("00.00%"),
     ],
     [
@@ -250,12 +235,23 @@ function reloadPlayerSheet(
     .sort((a, b) => {
       if (a.titles !== b.titles) {
         return b.titles - a.titles;
-        //   } else if (a.soloTitles !== b.soloTitles) {
-        //     return b.soloTitles - a.soloTitles;
-      } else if (a.totalWins !== b.totalWins) {
-        return b.totalWins - a.totalWins;
-        //   } else if (a.soloWins !== b.soloWins) {
-        //     return b.soloWins - a.soloWins;
+      } else if (a.countByPosition["Vice"] !== b.countByPosition["Vice"]) {
+        return b.countByPosition["Vice"] - a.countByPosition["Vice"];
+      } else if (
+        a.countByPosition["Semifinal"] !== b.countByPosition["Semifinal"]
+      ) {
+        return b.countByPosition["Semifinal"] - a.countByPosition["Semifinal"];
+      } else if (
+        a.countByPosition["Primeira Fase"] +
+          a.countByPosition["Segunda Fase"] !==
+        b.countByPosition["Primeira Fase"] + b.countByPosition["Segunda Fase"]
+      ) {
+        return (
+          b.countByPosition["Primeira Fase"] +
+          b.countByPosition["Segunda Fase"] -
+          (a.countByPosition["Primeira Fase"] +
+            a.countByPosition["Segunda Fase"])
+        );
       } else if (a.matches.length !== b.matches.length) {
         return b.matches.length - a.matches.length;
       } else {
