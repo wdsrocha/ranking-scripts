@@ -1,12 +1,3 @@
-interface PlayerData extends Player {
-  totalWins: number;
-  twolala: number;
-  titles: number;
-  winRate: number;
-  tournamentIds: string[]; // tournament key `${date} | ${host}`
-  countByPosition: Record<TournamentPosition, number>;
-}
-
 function norm(nickname: string) {
   return nickname.toLocaleLowerCase().trim();
 }

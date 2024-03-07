@@ -7,37 +7,12 @@ function onOpen() {
     .addToUi();
 }
 
-interface Team {
-  players: string[]; // nickname
-  roundsWon: number;
-}
-
-interface Match {
-  raw: string;
-  host: string;
-  date: string;
-  stage: Stage;
-  teams: Team[];
-  isWO?: boolean;
-}
-
-interface Player {
-  nickname: string;
-  matches: Match[];
-}
-
 enum Stage {
   Unknown = "Desconhecido",
   EightFinals = "Oitavas de Final",
   QuarterFinals = "Quartas de Final",
   SemiFinals = "Semifinal",
   Finals = "Final",
-}
-
-interface Tournament {
-  date: string;
-  host: string;
-  matches: Match[];
 }
 
 function getTeamsFromMatchResults(data: string): Team[] {

@@ -1,12 +1,3 @@
-interface Tournament {
-  id: string;
-  host: string;
-  date: string;
-  champions: string[];
-  runnersUp: string[];
-  matches: Match[];
-}
-
 function groupMatchesByTournament(matches: Match[]): Record<string, Match[]> {
   return matches.reduce<Record<string, Match[]>>((prev, curr) => {
     const id = getTournamentId(curr);
