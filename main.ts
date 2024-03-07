@@ -113,10 +113,6 @@ function getWinners(match: Match): string[] {
 // Many teams can lose at the same time. For the sake of simplicity, this
 // functions returns a single team of all losers
 function getLosers(match: Match): string[] {
-  if (match.isWO) {
-    return [];
-  }
-
   const losers: string[] = [];
   const maxRoundsWon = Math.max(...match.teams.map((team) => team.roundsWon));
   match.teams.forEach((team) => {
@@ -152,15 +148,20 @@ function updateStats() {
   const matches: Match[] = data
     .slice(1)
     // .filter((row) => row[0].getMonth() === 1)
-    .map((row) => ({
-      date: row[0],
-      host: row[1],
-      stage: row[2],
-      raw: row[3],
-      teams: getTeamsFromMatchResults(row[3]),
-      isWO: row[3].includes("(WO)"),
-      tournamentId: getTournamentId(row[0], row[1]),
-    }));
+    .map((row) => {
+      const teams = getTeamsFromMatchResults(row[3]);
+      return {
+        date: row[0],
+        host: row[1],
+        stage: row[2],
+        raw: row[3],
+        teams,
+        isWO: row[3].includes("(WO)"),
+        tournamentId: getTournamentId(row[0], row[1]),
+        winners: getWinners({ teams } as Match),
+        losers: getLosers({ teams } as Match),
+      };
+    });
 
   const tournamentSheet = ss.getSheetByName("Edições");
   if (!tournamentSheet) {
@@ -201,22 +202,28 @@ function updateStats() {
   console.log(warnings.sort().join("\n"));
 
   reloadPlayerSheet(ss.getSheetByName("MCs")!, matches);
-  // reloadTournamentSheet(ss.getSheetByName("Edições (fevereiro)")!, matches);
+  reloadTournamentSheet(ss.getSheetByName("Edições")!, matches);
   // reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
-}
 
-function AUX(data: any[][]) {
-  const matches: Match[] = data.map((row) => ({
-    date: row[0],
-    host: row[1],
-    stage: row[2],
-    raw: row[3],
-    teams: getTeamsFromMatchResults(row[3]),
-    isWO: row[3].includes("(WO)"),
-    tournamentId: getTournamentId(row[0], row[1]),
-  }));
-
-  return getFurthestStage(matches);
+  const values = sheet
+    .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 6)
+    .getValues()
+    .map((row) => {
+      const team = getTeamsFromMatchResults(row[3]);
+      const winners = getWinners({ teams: team } as Match);
+      const losers = getLosers({ teams: team } as Match);
+      return [
+        row[0],
+        row[1],
+        row[2],
+        row[3],
+        playersToString(winners),
+        playersToString(losers),
+      ];
+    });
+  sheet
+    .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 6)
+    .setValues(values);
 }
 
 function j(d: any) {
@@ -259,28 +266,4 @@ function downloadFile() {
     )}`,
     filename: filename,
   };
-}
-
-function WINNERS(input: string) {
-  const winners = getWinners({
-    teams: getTeamsFromMatchResults(input),
-    raw: "",
-    host: "",
-    date: "",
-    stage: Stage.Unknown,
-    tournamentId: "",
-  });
-  return printTeam({ players: winners, roundsWon: 0 });
-}
-
-function LOSERS(input: string) {
-  const losers = getLosers({
-    teams: getTeamsFromMatchResults(input),
-    raw: "",
-    host: "",
-    date: "",
-    stage: Stage.Unknown,
-    tournamentId: "",
-  });
-  return printTeam({ players: losers, roundsWon: 0 });
 }

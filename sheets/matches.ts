@@ -1,4 +1,5 @@
-function playersToString(p: string[]) {
+function playersToString(p: string[] | undefined) {
+  if (!p) return "";
   if (p.length === 0) return "";
   let s = p[0];
   for (let i = 1; i < p.length; i++) {

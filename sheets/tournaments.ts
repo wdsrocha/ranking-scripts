@@ -13,7 +13,7 @@ function reloadTournamentSheet(
   sheet: GoogleAppsScript.Spreadsheet.Sheet,
   matches: Match[]
 ) {
-  const tournaments = matches.reduce<Record<string, Tournament>>(
+  const tournamentById = matches.reduce<Record<string, Tournament>>(
     (prev, match) => {
       const id = match.tournamentId;
       if (!(id in prev)) {
@@ -38,38 +38,20 @@ function reloadTournamentSheet(
     {}
   );
 
-  const tableDefinitions: [
-    string,
-    (x: Tournament) => string | number,
-    ((range: GoogleAppsScript.Spreadsheet.Range) => void)?
-  ][] = [
-    ["Data", (x) => x.date],
-    ["Organização", (x) => x.host],
-    ["Campeões", (x) => playersToString(x.champions)],
-    ["Vices", (x) => playersToString(x.runnersUp)],
-  ];
+  const values = sheet
+    .getRange(2, 1, sheet.getLastRow() - 1, 4)
+    .getValues()
+    .map((row, index) => {
+      const id = getTournamentId(row[0], row[1]);
+      if (!(id in tournamentById)) {
+        return [row[0], row[1], row[2], row[3]];
+      }
 
-  const tournamentTable = Object.values(tournaments).map((tournament) =>
-    tableDefinitions.map(([header, f]) => f(tournament))
-  );
+      const champions = playersToString(tournamentById[id].champions);
+      const runnersUp = playersToString(tournamentById[id].runnersUp);
 
-  sheet.clearFormats();
-  sheet.clearContents();
+      return [row[0], row[1], champions, runnersUp];
+    });
 
-  sheet
-    .getRange(1, 1, 1, tableDefinitions.length)
-    .setValues([tableDefinitions.map(([header]) => header)])
-    .setFontWeight("bold")
-    .setHorizontalAlignment("center")
-    .setVerticalAlignment("middle")
-    .setWrap(true);
-
-  sheet
-    .getRange(2, 1, tournamentTable.length, tableDefinitions.length)
-    .setValues(tournamentTable);
-
-  tableDefinitions.forEach(([_, __, apply], index) => {
-    const range = sheet.getRange(1, index + 1, sheet.getLastRow() - 1, 1);
-    apply?.(range);
-  });
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).setValues(values);
 }

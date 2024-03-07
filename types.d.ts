@@ -11,6 +11,8 @@ interface Match {
   teams: Team[];
   isWO?: boolean;
   tournamentId: string;
+  winners: string[];
+  losers: string[];
 }
 
 interface Player {
