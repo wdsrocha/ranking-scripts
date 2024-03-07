@@ -29,22 +29,32 @@ function main() {
             twolala: 0,
             participation: 0,
             titles: 0,
+            scoreByTournament: {},
           };
+        }
+
+        if (!(match.tournamentId in players[nickname].scoreByTournament)) {
+          players[nickname].scoreByTournament[match.tournamentId] = 0;
         }
       });
     });
   });
 
   const matchesByTournament: Record<string, Match[]> = {};
+  let lastTournament = 0;
   matches.forEach((match) => {
     if (!(match.tournamentId in matchesByTournament)) {
       matchesByTournament[match.tournamentId] = [];
     }
     matchesByTournament[match.tournamentId].push(match);
+    lastTournament = Math.max(lastTournament, match.tournamentId);
   });
 
   let prevPlayers: Record<string, Player> = JSON.parse(JSON.stringify(players));
   const matchScoreClarifications: MatchScoreClarification[] = [];
+
+  let leaderboard: Player[] = [];
+
   Object.entries(matchesByTournament).forEach(([id, matches]) => {
     const participants: Set<string> = new Set();
     matches.forEach((match) => {
@@ -63,10 +73,12 @@ function main() {
 
           if (match.winners.includes(nickname)) {
             player.score += winnerScore;
+            player.scoreByTournament[id] += winnerScore;
             player.twolala += match.isTwolala ? 1 : 0;
             player.titles += match.stage === Stage.Finals ? 1 : 0;
           } else {
             player.score += loserScore;
+            player.scoreByTournament[id] += loserScore;
           }
         });
       });
@@ -85,12 +97,28 @@ function main() {
       )
       .forEach((player) => {
         player.score -= 1;
+        player.scoreByTournament[id] -= 1;
         console.log(
           `-1 para ${player.nickname} pois faltou na rodada ${id} enquanto estava no Top 4 (posição ${player.position})`
         );
       });
 
-    const leaderboard = Object.values(players)
+    // SCORE VALIDATION
+    Object.values(players).forEach((player) => {
+      const tournamentScoreSum = Object.values(player.scoreByTournament).reduce(
+        (acc, score) => {
+          return acc + score;
+        }
+      );
+
+      if (tournamentScoreSum !== player.score) {
+        throw new Error(
+          `A soma dos scores por torneio de ${player.nickname} não bate com o score total`
+        );
+      }
+    });
+
+    leaderboard = Object.values(players)
       // Desative o filtro para verificar se tá tudo certo
       // A segunda parte da condição serve para incluir MCs que tinham 1 ponto e
       // perderam pela regra da vitória do desfavorecido
@@ -167,6 +195,48 @@ function main() {
   });
 
   addClarifications(matchScoreClarifications, MATCHES_SHEET);
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Histórico");
+  if (!sheet) {
+    throw new Error(`Planilha "Histórico" não encontrada`);
+  }
+
+  sheet.getRange(4, 1, 100, 13).clearContent();
+
+  leaderboard.map((player, index) => {
+    const range = sheet.getRange(index + 4, 1, 1, 13);
+
+    const f = (p: Player, tournamentId: string) => {
+      const scoreDelta = p.scoreByTournament[tournamentId];
+      let scoreDeltaText = "";
+      if (scoreDelta > 0) {
+        scoreDeltaText = `+${scoreDelta}`;
+      } else if (scoreDelta < 0) {
+        scoreDeltaText = scoreDelta.toString(); // comes with minus sign
+      }
+
+      return scoreDeltaText;
+    };
+
+    range.setValues([
+      [
+        player.position,
+        player.nickname,
+        player.score,
+        f(player, "1"),
+        f(player, "2"),
+        f(player, "3"),
+        f(player, "4"),
+        f(player, "5"),
+        f(player, "6"),
+        f(player, "7"),
+        f(player, "8"),
+        f(player, "9"),
+        f(player, "10"),
+      ],
+    ]);
+  });
 }
 
 function calculateMatchScore(

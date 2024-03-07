@@ -5,6 +5,7 @@ interface Player {
   twolala: number;
   participation: number;
   titles: number;
+  scoreByTournament: Record<string, number>;
 }
 
 interface Team {
