@@ -10,6 +10,7 @@ interface Match {
   stage: Stage;
   teams: Team[];
   isWO?: boolean;
+  tournamentId: string;
 }
 
 interface Player {
@@ -24,6 +25,7 @@ interface Tournament {
   champions: string[];
   runnersUp: string[];
   matches: Match[];
+  isMissingMatches?: boolean;
 }
 
 interface PlayerData extends Player {

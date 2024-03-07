@@ -16,7 +16,7 @@ enum Stage {
 }
 
 function getTeamsFromMatchResults(data: string): Team[] {
-  data = data.replace(".", "").trim();
+  data = data.replace(/\./g, "").trim();
   const isWO = data.includes("(WO)");
   data = data.replace(/\([^()]*\)/g, "").trim();
 
@@ -26,7 +26,7 @@ function getTeamsFromMatchResults(data: string): Team[] {
     if (isWO) {
       return [
         {
-          players: data.replace(", ", " e ").split(" e "),
+          players: data.replace(/\, /g, " e ").split(" e "),
           roundsWon: 0,
         },
       ];
@@ -151,7 +151,7 @@ function updateStats() {
 
   const matches: Match[] = data
     .slice(1)
-    .filter((row) => row[0].getMonth() === 1)
+    // .filter((row) => row[0].getMonth() === 1)
     .map((row) => ({
       date: row[0],
       host: row[1],
@@ -159,10 +159,49 @@ function updateStats() {
       raw: row[3],
       teams: getTeamsFromMatchResults(row[3]),
       isWO: row[3].includes("(WO)"),
+      tournamentId: getTournamentId(row[0], row[1]),
     }));
 
-  reloadPlayerSheet(ss.getSheetByName("MCs (fevereiro)")!, matches);
-  reloadTournamentSheet(ss.getSheetByName("Edições (fevereiro)")!, matches);
+  const tournamentSheet = ss.getSheetByName("Edições");
+  if (!tournamentSheet) {
+    throw new Error("Sheet 'Edições' not found");
+  }
+
+  const tournamentData = tournamentSheet.getDataRange().getValues();
+  const tournaments: Tournament[] = tournamentData.slice(1).map((row) => ({
+    id: getTournamentId(row[0], row[1]),
+    date: row[0],
+    host: row[1],
+    champions: row[2],
+    runnersUp: row[3],
+    matches: [],
+    isMissingMatches: row.find((cell) => cell === "FALTA") !== undefined,
+  }));
+
+  const warnings: string[] = [];
+  // Appears on Tournament Sheet but not on Match Sheet
+  for (const tournament of tournaments.filter((t) => !t.isMissingMatches)) {
+    const found = matches.find((match) => match.tournamentId === tournament.id);
+    if (!found) {
+      warnings.push(`${tournament.id.padEnd(50)} | Batalhas ❌ | Edições ✅`);
+    }
+  }
+
+  // Appears on Matches Sheet but not on Tournament Sheet
+  const tournamentIdsFromMatches = Array.from(
+    new Set(matches.map((match) => match.tournamentId))
+  ).sort();
+  for (const id of tournamentIdsFromMatches) {
+    const found = tournaments.find((tournament) => id === tournament.id);
+    if (!found) {
+      warnings.push(`${id.padEnd(50)} | Batalhas ✅ | Edições ❌`);
+    }
+  }
+
+  console.log(warnings.sort().join("\n"));
+
+  reloadPlayerSheet(ss.getSheetByName("MCs")!, matches);
+  // reloadTournamentSheet(ss.getSheetByName("Edições (fevereiro)")!, matches);
   // reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
 }
 
@@ -174,6 +213,7 @@ function AUX(data: any[][]) {
     raw: row[3],
     teams: getTeamsFromMatchResults(row[3]),
     isWO: row[3].includes("(WO)"),
+    tournamentId: getTournamentId(row[0], row[1]),
   }));
 
   return getFurthestStage(matches);
@@ -228,6 +268,7 @@ function WINNERS(input: string) {
     host: "",
     date: "",
     stage: Stage.Unknown,
+    tournamentId: "",
   });
   return printTeam({ players: winners, roundsWon: 0 });
 }
@@ -239,6 +280,7 @@ function LOSERS(input: string) {
     host: "",
     date: "",
     stage: Stage.Unknown,
+    tournamentId: "",
   });
   return printTeam({ players: losers, roundsWon: 0 });
 }

@@ -1,6 +1,6 @@
 function groupMatchesByTournament(matches: Match[]): Record<string, Match[]> {
   return matches.reduce<Record<string, Match[]>>((prev, curr) => {
-    const id = getTournamentId(curr);
+    const id = curr.tournamentId;
     if (!(id in prev)) {
       prev[id] = [];
     }
@@ -15,7 +15,7 @@ function reloadTournamentSheet(
 ) {
   const tournaments = matches.reduce<Record<string, Tournament>>(
     (prev, match) => {
-      const id = getTournamentId(match);
+      const id = match.tournamentId;
       if (!(id in prev)) {
         prev[id] = {
           id,

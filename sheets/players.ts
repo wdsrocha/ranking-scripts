@@ -2,8 +2,10 @@ function norm(nickname: string) {
   return nickname.toLocaleLowerCase().trim();
 }
 
-function getTournamentId(match: Match) {
-  return `${match.date} | ${match.host}`;
+function getTournamentId(date: Date, host: string) {
+  const simpleDate = date.toISOString().split("T")[0];
+  const simpleHost = host.toLocaleLowerCase().trim().replace(/\s/g, "-");
+  return `${simpleDate}-${simpleHost}`;
 }
 
 function reloadPlayerSheet(
@@ -41,7 +43,7 @@ function reloadPlayerSheet(
         players[norm(nickname)].matches.push(match);
 
         // THIS WILL HAVE DUPLICATES!!!
-        players[norm(nickname)].tournamentIds.push(getTournamentId(match));
+        players[norm(nickname)].tournamentIds.push(match.tournamentId);
       });
     });
 
@@ -71,7 +73,7 @@ function reloadPlayerSheet(
   });
 
   const countTournaments = (player: PlayerData) =>
-    new Set(player.matches.map(getTournamentId)).size;
+    new Set(player.matches.map((match) => match.tournamentId)).size;
 
   function countDistinctFoes(p: PlayerData) {
     return new Set(
@@ -85,8 +87,8 @@ function reloadPlayerSheet(
 
   const countFavoriteHost = (player: PlayerData): [string, number] => {
     return Object.entries(
-      Array.from(new Set(player.matches.map(getTournamentId)))
-        .map((id) => id.split(" | ")[1])
+      Array.from(new Set(player.matches.map((match) => match.tournamentId)))
+        .map((id) => id.slice(11))
         .reduce<Record<string, number>>(
           (prev, curr) => ({
             ...prev,
@@ -281,7 +283,7 @@ function getFurthestStage(matches: Match[]): Stage {
 }
 
 function getTournamentWinners(matches: Match[]): string[] {
-  const tournamentIds = matches.map(getTournamentId);
+  const tournamentIds = matches.map((match) => match.tournamentId);
   if (tournamentIds.some((id) => id !== tournamentIds[0])) {
     throw new Error(
       "getTournamentChampion: More than one tournament in matches"
