@@ -188,7 +188,6 @@ function updateStats() {
 
   reloadPlayerSheet(ss.getSheetByName("MCs (fevereiro)")!, matches);
   reloadTournamentSheet(ss.getSheetByName("Edições (fevereiro)")!, matches);
-  // reloadExtraSheet(ss.getSheetByName("Extra")!, matches);
   // reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
 }
 

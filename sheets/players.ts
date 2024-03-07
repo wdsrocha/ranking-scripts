@@ -83,19 +83,6 @@ function reloadPlayerSheet(
     new Set(player.matches.map(getTournamentId)).size;
 
   function countDistinctFoes(p: PlayerData) {
-    if (p.nickname === "Sharp") {
-      // console.log({
-      //   foes: new Set(
-      //     p.matches
-      //       .flatMap((match) => match.teams)
-      //       .filter(
-      //         (team) => !team.players.map(norm).includes(norm(p.nickname))
-      //       )
-      //       .flatMap((team) => team.players)
-      //       .map(norm)
-      //   ),
-      // });
-    }
     return new Set(
       p.matches
         .flatMap((match) => match.teams)
@@ -279,75 +266,6 @@ function reloadPlayerSheet(
     const range = sheet.getRange(1, index + 1, sheet.getLastRow() - 1, 1);
     apply?.(range);
   });
-
-  interface Stat {
-    nickname: string;
-
-    // Scene 1
-    matches: number;
-    wins: number;
-    winRate: number;
-    losses: number;
-    lossRate: number;
-
-    // Scene 2
-    tournaments: number;
-    finals: number;
-    titles: number;
-
-    // Scene 3
-    foes: number; // number of different foes
-
-    // Scene 4
-    rival: string; // player with most matches against (1v1)
-
-    // Scene 5
-    weakestFoe: string; // player with most wins against (1v1)
-
-    // Scene 6
-    strongestFoe: string; // player with most losses against (1v1)
-
-    // Scene 7
-    favoriteHost: string; // host with most tournaments participated
-    favoriteHostFreq: number;
-  }
-
-  // Object.values(players).map<Stat>((p) => {
-  //   const n = p.matches.length;
-  //   const w = p.totalWins;
-
-  //   return {
-  //     nickname: p.nickname,
-
-  //     // Scene 1
-  //     matches: n,
-  //     wins: w,
-  //     winRate: w / n,
-  //     losses: n - w,
-  //     lossRate: (n - w) / n,
-
-  //     // Scene 2
-  //     tournaments: countTournaments(p),
-  //     titles: p.titles,
-  //     finals: p.matches.filter((match) => match.stage === Stage.Finals).length,
-
-  //     // Scene 3
-  //     foes: countDistinctFoes(p),
-
-  //     // Scene 4
-  //     rival: "onec",
-
-  //     // Scene 5
-  //     weakestFoe: "",
-
-  //     // Scene 6
-  //     strongestFoe: "",
-
-  //     // Scene 7
-  //     favoriteHost: "",
-  //     tournamentsInFavoriteHost: 0,
-  //   };
-  // });
 }
 
 enum Champion {
@@ -437,30 +355,3 @@ function countPlayerPositionPerTournament(player: Player, matches: Match[]) {
     }
   );
 }
-
-// function countFurthestStages(player: Player, matches: Match[]) {
-//   const matchesByTournament = groupMatchesByTournament(matches);
-//   return Object.entries(matchesByTournament).reduce<
-//     Record<Stage | Champion, number>
-//   >(
-//     (prev, [_, matches]) => {
-//       const champions = getTournamentWinners(matches);
-//       if (champions.map(norm).includes(norm(player.nickname))) {
-//         prev[Champion.Champion]++;
-//         return prev;
-//       } else {
-//         const stage = getFurthestStage(matches);
-//         prev[stage]++;
-//         return prev;
-//       }
-//     },
-//     {
-//       [Stage.Unknown]: 0,
-//       [Stage.EightFinals]: 0,
-//       [Stage.QuarterFinals]: 0,
-//       [Stage.SemiFinals]: 0,
-//       [Stage.Finals]: 0,
-//       [Champion.Champion]: 0,
-//     }
-//   );
-// }
