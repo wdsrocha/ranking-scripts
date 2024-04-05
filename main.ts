@@ -29,7 +29,18 @@ function main() {
             twolala: 0,
             participation: 0,
             titles: 0,
-            scoreByTournament: {},
+            scoreByTournament: {
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 0,
+            },
           };
         }
 
@@ -108,12 +119,13 @@ function main() {
       const tournamentScoreSum = Object.values(player.scoreByTournament).reduce(
         (acc, score) => {
           return acc + score;
-        }
+        },
+        0
       );
 
       if (tournamentScoreSum !== player.score) {
         throw new Error(
-          `A soma dos scores por torneio de ${player.nickname} não bate com o score total`
+          `A soma dos scores por torneio (${tournamentScoreSum}) de ${player.nickname} não bate com o score total (${player.score})`
         );
       }
     });
@@ -122,9 +134,9 @@ function main() {
       // Desative o filtro para verificar se tá tudo certo
       // A segunda parte da condição serve para incluir MCs que tinham 1 ponto e
       // perderam pela regra da vitória do desfavorecido
-      .filter(
-        (player) => player.score > 0 || prevPlayers[player.nickname].score > 0
-      )
+      // .filter(
+      //   (player) => player.score > 0 || prevPlayers[player.nickname].score > 0
+      // )
       .sort(function comparePlayers(a: Player, b: Player) {
         if (a.score != b.score) {
           return b.score - a.score;
@@ -237,6 +249,30 @@ function main() {
       ],
     ]);
   });
+
+  const statsSheet = ss.getSheetByName("Análise");
+  if (!statsSheet) {
+    throw new Error(`Planilha "Análise" não encontrada`);
+  }
+
+  const participations: number[] = [];
+  statsSheet
+    .getRange(2, 1, 100, 1)
+    .getValues()
+    .forEach((row, index) => {
+      if (row[0] === "") {
+        return;
+      } else if (!(row[0] in players)) {
+        participations.push(0);
+      } else {
+        participations.push(players[row[0]].participation);
+      }
+    });
+
+  statsSheet
+    .getRange(2, 3, participations.length, 1)
+    .clearContent()
+    .setValues(participations.map((p) => [p]));
 }
 
 function calculateMatchScore(
