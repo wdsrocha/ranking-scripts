@@ -6,6 +6,8 @@ interface Player {
   participation: number;
   titles: number;
   scoreByTournament: Record<string, number>;
+  underdogVictory: number;
+  topdogDefeat: number;
 }
 
 interface Team {
