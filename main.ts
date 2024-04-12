@@ -29,6 +29,8 @@ function main() {
             twolala: 0,
             participation: 0,
             titles: 0,
+            underdogVictory: 0,
+            topdogDefeat: 0,
             scoreByTournament: {
               "1": 0,
               "2": 0,
@@ -69,12 +71,13 @@ function main() {
   Object.entries(matchesByTournament).forEach(([id, matches]) => {
     const participants: Set<string> = new Set();
     matches.forEach((match) => {
-      const { winnerScore, loserScore, clarification } = calculateMatchScore(
-        match,
-        prevPlayers,
-        players
-        // true
-      );
+      const { winnerScore, loserScore, clarification, underdogVictory } =
+        calculateMatchScore(
+          match,
+          prevPlayers,
+          players
+          // true
+        );
       matchScoreClarifications.push({ matchId: match.id, clarification });
 
       match.teams.forEach((team) => {
@@ -87,9 +90,15 @@ function main() {
             player.scoreByTournament[id] += winnerScore;
             player.twolala += match.isTwolala ? 1 : 0;
             player.titles += match.stage === Stage.Finals ? 1 : 0;
+            if (underdogVictory) {
+              player.underdogVictory += 1;
+            }
           } else {
             player.score += loserScore;
             player.scoreByTournament[id] += loserScore;
+            if (underdogVictory) {
+              player.topdogDefeat += 1;
+            }
           }
         });
       });
@@ -214,10 +223,10 @@ function main() {
     throw new Error(`Planilha "Histórico" não encontrada`);
   }
 
-  sheet.getRange(4, 1, 100, 13).clearContent();
+  sheet.getRange(4, 1, 100, 15).clearContent();
 
   leaderboard.map((player, index) => {
-    const range = sheet.getRange(index + 4, 1, 1, 13);
+    const range = sheet.getRange(index + 4, 1, 1, 15);
 
     const f = (p: Player, tournamentId: string) => {
       const scoreDelta = p.scoreByTournament[tournamentId];
@@ -246,6 +255,8 @@ function main() {
         f(player, "8"),
         f(player, "9"),
         f(player, "10"),
+        player.underdogVictory ? player.underdogVictory : "",
+        player.topdogDefeat ? player.topdogDefeat : "",
       ],
     ]);
   });
@@ -280,7 +291,12 @@ function calculateMatchScore(
   lastTournamentScores: Record<string, Pick<Player, "score">>,
   currTournamentScores: Record<string, Pick<Player, "score">>,
   verbose: boolean = false
-): { winnerScore: number; loserScore: number; clarification: string } {
+): {
+  winnerScore: number;
+  loserScore: number;
+  clarification: string;
+  underdogVictory: boolean;
+} {
   let clarification = `${match.tournamentId}ª Rodada - ${
     match.id + 1
   }ª Batalha da Temporada\n\n`;
@@ -315,6 +331,7 @@ function calculateMatchScore(
     clarification += `\nBatalha de Dupla: Pontuação dividida por 2 e arredondada para cima\n`;
   }
 
+  let underdogVictory = false;
   if (match.mode === "Solo" && !match.isWO) {
     const winnerRating = lastTournamentScores[match.winners[0]].score;
     const loserRating = lastTournamentScores[match.losers[0]].score;
@@ -323,6 +340,7 @@ function calculateMatchScore(
       loserScore -= 1;
 
       clarification += `\nVitória do desfavorecido: ${winners} rouba 1 ponto de ${losers}\n`;
+      underdogVictory = true;
     }
   }
 
@@ -353,6 +371,7 @@ function calculateMatchScore(
     winnerScore,
     loserScore,
     clarification,
+    underdogVictory,
   };
 }
 
