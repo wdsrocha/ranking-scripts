@@ -165,10 +165,12 @@ function main() {
       });
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName(`Placar ${id.padStart(2, "0")}`);
+    const sheetName = `Placar ${id.padStart(2, "0")}`;
+    let sheet = ss.getSheetByName(sheetName);
     if (!sheet) {
-      return;
+      ss.getSheetByName("Placar")!.copyTo(ss).setName(sheetName);
     }
+    sheet = ss.getSheetByName(sheetName)!;
 
     sheet.getRange(3, 1, 100, 8).clearContent();
 
@@ -255,35 +257,37 @@ function main() {
         f(player, "8"),
         f(player, "9"),
         f(player, "10"),
-        player.underdogVictory ? player.underdogVictory : "",
-        player.topdogDefeat ? player.topdogDefeat : "",
+        "",
+        "",
+        // player.underdogVictory ? player.underdogVictory : "",
+        // player.topdogDefeat ? player.topdogDefeat : "",
       ],
     ]);
   });
 
-  const statsSheet = ss.getSheetByName("Análise");
-  if (!statsSheet) {
-    throw new Error(`Planilha "Análise" não encontrada`);
-  }
+  // const statsSheet = ss.getSheetByName("Análise");
+  // if (!statsSheet) {
+  //   throw new Error(`Planilha "Análise" não encontrada`);
+  // }
 
-  const participations: number[] = [];
-  statsSheet
-    .getRange(2, 1, 100, 1)
-    .getValues()
-    .forEach((row, index) => {
-      if (row[0] === "") {
-        return;
-      } else if (!(row[0] in players)) {
-        participations.push(0);
-      } else {
-        participations.push(players[row[0]].participation);
-      }
-    });
+  // const participations: number[] = [];
+  // statsSheet
+  //   .getRange(2, 1, 100, 1)
+  //   .getValues()
+  //   .forEach((row, index) => {
+  //     if (row[0] === "") {
+  //       return;
+  //     } else if (!(row[0] in players)) {
+  //       participations.push(0);
+  //     } else {
+  //       participations.push(players[row[0]].participation);
+  //     }
+  //   });
 
-  statsSheet
-    .getRange(2, 3, participations.length, 1)
-    .clearContent()
-    .setValues(participations.map((p) => [p]));
+  // statsSheet
+  //   .getRange(2, 3, participations.length, 1)
+  //   .clearContent()
+  //   .setValues(participations.map((p) => [p]));
 }
 
 function calculateMatchScore(
