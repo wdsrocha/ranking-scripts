@@ -50,6 +50,21 @@ function reloadTournamentSheet(
       const champions = playersToString(tournamentById[id].champions);
       const runnersUp = playersToString(tournamentById[id].runnersUp);
 
+      if (champions !== row[2] || runnersUp !== row[3]) {
+        if (champions !== row[2]) {
+          console.log(
+            `Champion mismatch on tournament ${id}. Expected ${champions} (matches), got ${row[2]} (tournaments)`
+          );
+        }
+        if (runnersUp !== row[3]) {
+          console.log(
+            `Runner-up mismatch on tournament ${id}. Expected ${runnersUp} (matches), got ${row[3]} (tournaments)`
+          );
+        }
+
+        return [row[0], row[1], row[2], row[3]];
+      }
+
       return [row[0], row[1], champions, runnersUp];
     });
 

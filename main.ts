@@ -20,21 +20,15 @@ function getTeamsFromMatchResults(data: string): Team[] {
   const isWO = data.includes("(WO)");
   data = data.replace(/\([^()]*\)/g, "").trim();
 
-  if (!data.includes(" x ")) {
+  if (!data.includes(" x ") && isWO) {
     // Cases where there was not sufficient MCs or something, so the match was
     // marked as WO, but we don't know who was supposed to be the opponent
-    if (isWO) {
-      return [
-        {
-          players: data.replace(/\, /g, " e ").split(" e "),
-          roundsWon: 0,
-        },
-      ];
-    } else {
-      throw new Error(
-        `A batalha "${data}" não contém um ' x '. Não é possível determinar os times.`
-      );
-    }
+    return [
+      {
+        players: data.replace(/\, /g, " e ").split(" e "),
+        roundsWon: 0,
+      },
+    ];
   }
 
   // Scoreless
@@ -147,7 +141,7 @@ function updateStats() {
 
   const matches: Match[] = data
     .slice(1)
-    // .filter((row) => row[0].getMonth() === 1)
+    // .filter((row) => row[0].getMonth() === 2) // 0-indexed
     .map((row) => {
       const teams = getTeamsFromMatchResults(row[3]);
       return {
@@ -203,7 +197,7 @@ function updateStats() {
 
   reloadPlayerSheet(ss.getSheetByName("MCs")!, matches);
   reloadTournamentSheet(ss.getSheetByName("Edições")!, matches);
-  // reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
+  reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
 
   const values = sheet
     .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 6)
