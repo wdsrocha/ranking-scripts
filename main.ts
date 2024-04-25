@@ -257,10 +257,8 @@ function main() {
         f(player, "8"),
         f(player, "9"),
         f(player, "10"),
-        "",
-        "",
-        // player.underdogVictory ? player.underdogVictory : "",
-        // player.topdogDefeat ? player.topdogDefeat : "",
+        player.underdogVictory ? player.underdogVictory : "",
+        player.topdogDefeat ? player.topdogDefeat : "",
       ],
     ]);
   });
