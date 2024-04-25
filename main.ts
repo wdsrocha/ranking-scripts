@@ -3,7 +3,6 @@ function onOpen() {
   ui.createMenu("Ações")
     .addItem("Atualizar Estatísticas", "updateStats")
     .addItem("Gerar Estatísticas em JSON", "download")
-    .addItem("Adicionar Batalha", "showForm")
     .addToUi();
 }
 
