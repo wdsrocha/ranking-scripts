@@ -14,27 +14,37 @@ enum Stage {
   Finals = "Final",
 }
 
-function getTeamsFromMatchResults(data: string): Team[] {
-  data = data.replace(/\./g, "").trim();
-  const isWO = data.includes("(WO)");
+function getMatchResults(row: any[], rowNumber?: number): Match {
+  let data = row[3].replace(/\./g, "").trim();
+  let match: Match = {
+    date: row[0],
+    host: row[1],
+    stage: row[2],
+    raw: row[3],
+    isWO: data.includes("(WO)"),
+    tournamentId: getTournamentId(row[0], row[1]),
+    // Below are default values that will be overwritten
+    teams: [],
+    winners: [],
+    losers: [],
+  };
+
   data = data.replace(/\([^()]*\)/g, "").trim();
 
-  if (!data.includes(" x ") && isWO) {
+  if (!data.includes(" x ") && match.isWO) {
     // Cases where there was not sufficient MCs or something, so the match was
     // marked as WO, but we don't know who was supposed to be the opponent
-    return [
+    match.teams = [
       {
         players: data.replace(/\, /g, " e ").split(" e "),
         roundsWon: 0,
       },
     ];
-  }
-
-  // Scoreless
-  // E.g.: Blink e Killer* x Kenny e Kennyzin
-  //       Onec x Jhones*
-  if (data.includes("*")) {
-    return data.split(" x ").map((team) => ({
+  } else if (data.includes("*")) {
+    // Scoreless
+    // E.g.: Blink e Killer* x Kenny e Kennyzin
+    //       Onec x Jhones*
+    match.teams = data.split(" x ").map((team) => ({
       // players: team.replace("*", "").split(" e "),
       players: team
         .replace("*", "")
@@ -44,17 +54,15 @@ function getTeamsFromMatchResults(data: string): Team[] {
         .map((s) => s.trim()),
       roundsWon: team.includes("*") ? 1 : 0,
     }));
-  }
-
-  // With score, no double-three
-  // E.g.: RK 2 x 0 Big Xang
-  //       Eva e Isa 2 x 1 Mont e Onec
-  if (/ \d\s?x\s?\d /.test(data)) {
+  } else if (/ \d\s?x\s?\d /.test(data)) {
+    // With score, no double-three
+    // E.g.: RK 2 x 0 Big Xang
+    //       Eva e Isa 2 x 1 Mont e Onec
     const [full, roundsWon1, roundsWon2] = / (\d)\s?x\s?(\d) /.exec(data) || [];
     // Use the extracted groups in your code
     const roundsResult = [roundsWon1, roundsWon2];
 
-    return data.split(full!).map((team, i) => ({
+    match.teams = data.split(full!).map((team, i) => ({
       players: team
         .split(", ") // Handle trio
         .join(" e ") // Handle trio
@@ -62,19 +70,26 @@ function getTeamsFromMatchResults(data: string): Team[] {
         .map((s) => s.trim()),
       roundsWon: parseInt(roundsResult[i]),
     }));
-  }
-
-  // With score, double-three
-  if (data.split(" x ").length === 3) {
+  } else if (data.split(" x ").length === 3) {
+    // With score, double-three
     const results = data.split(" x ");
 
-    return results.map((p, i) => ({
+    match.teams = results.map((p, i) => ({
       players: [p.slice(0, p.length - 1).trim()],
       roundsWon: parseInt(p.slice(-1)),
     }));
+  } else {
+    let errorMessage = `A batalha "${data}" está em formato inválido`;
+    if (rowNumber) {
+      errorMessage += ` na linha ${rowNumber}`;
+    }
+    throw new Error(errorMessage);
   }
 
-  throw new Error(`A batalha "${data}" está em formato inválido`);
+  match.winners = getWinners(match);
+  match.losers = getLosers(match);
+
+  return match;
 }
 
 function toStage(rawStage: string): Stage {
@@ -139,22 +154,10 @@ function updateStats() {
   const data = sheet.getDataRange().getValues();
 
   const matches: Match[] = data
+    .map((row, index) => ({ row, index }))
     .slice(1)
-    // .filter((row) => row[0].getMonth() === 2) // 0-indexed
-    .map((row) => {
-      const teams = getTeamsFromMatchResults(row[3]);
-      return {
-        date: row[0],
-        host: row[1],
-        stage: row[2],
-        raw: row[3],
-        teams,
-        isWO: row[3].includes("(WO)"),
-        tournamentId: getTournamentId(row[0], row[1]),
-        winners: getWinners({ teams } as Match),
-        losers: getLosers({ teams } as Match),
-      };
-    });
+    // .filter((x) => x.row[0].getMonth() === 3) // 0-indexed
+    .map((x) => getMatchResults(x.row, x.index + 1));
 
   const tournamentSheet = ss.getSheetByName("Edições");
   if (!tournamentSheet) {
@@ -199,23 +202,23 @@ function updateStats() {
   reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
 
   const values = sheet
-    .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 6)
+    .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 8)
     .getValues()
     .map((row) => {
-      const team = getTeamsFromMatchResults(row[3]);
-      const winners = getWinners({ teams: team } as Match);
-      const losers = getLosers({ teams: team } as Match);
+      const match = getMatchResults(row);
       return [
         row[0],
         row[1],
         row[2],
         row[3],
-        playersToString(winners),
-        playersToString(losers),
+        playersToString(match.winners),
+        playersToString(match.losers),
+        isTwolala(match) ? "Twolala" : "",
+        match.isWO ? "WO" : "",
       ];
     });
   sheet
-    .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 6)
+    .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 8)
     .setValues(values);
 }
 
