@@ -135,6 +135,41 @@ function isSoloMatch(match: Match): boolean {
   return match.teams.every((team) => team.players.length === 1);
 }
 
+function isDoubleThreeMatch(match: Match): boolean {
+  return (
+    match.teams.length === 3 &&
+    match.teams.every((team) => team.players.length === 1)
+  );
+}
+
+function isDuoMatch(match: Match): boolean {
+  return match.teams.every((team) => team.players.length === 2);
+}
+
+function isTrioMatch(match: Match): boolean {
+  return match.teams.every((team) => team.players.length === 3);
+}
+
+function isQuartetMatch(match: Match): boolean {
+  return match.teams.every((team) => team.players.length === 4);
+}
+
+function getTeamMode(match: Match): string {
+  if (isDoubleThreeMatch(match)) {
+    return "Double-Three";
+  } else if (isSoloMatch(match)) {
+    return "Solo";
+  } else if (isDuoMatch(match)) {
+    return "Dupla";
+  } else if (isTrioMatch(match)) {
+    return "Trio";
+  } else if (isQuartetMatch(match)) {
+    return "Quarteto";
+  } else {
+    return "Desconhecido";
+  }
+}
+
 function isTwolala(match: Match): boolean {
   if (match.isWO || !isSoloMatch(match)) {
     return false;
@@ -156,7 +191,7 @@ function updateStats() {
   const matches: Match[] = data
     .map((row, index) => ({ row, index }))
     .slice(1)
-    // .filter((x) => x.row[0].getMonth() === 3) // 0-indexed
+    .filter((x) => x.row[0].getMonth() === 3) // 0-indexed
     .map((x) => getMatchResults(x.row, x.index + 1));
 
   const tournamentSheet = ss.getSheetByName("Edições");
@@ -202,7 +237,7 @@ function updateStats() {
   reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
 
   const values = sheet
-    .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 8)
+    .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 4)
     .getValues()
     .map((row) => {
       const match = getMatchResults(row);
@@ -213,12 +248,13 @@ function updateStats() {
         row[3],
         playersToString(match.winners),
         playersToString(match.losers),
+        getTeamMode(match),
         isTwolala(match) ? "Twolala" : "",
         match.isWO ? "WO" : "",
       ];
     });
   sheet
-    .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 8)
+    .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 9)
     .setValues(values);
 }
 
