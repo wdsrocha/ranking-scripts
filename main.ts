@@ -2,7 +2,6 @@ function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu("Ações")
     .addItem("Atualizar Estatísticas", "updateStats")
-    .addItem("Gerar Estatísticas em JSON", "download")
     .addToUi();
 }
 
@@ -258,10 +257,6 @@ function updateStats() {
     .setValues(values);
 }
 
-function j(d: any) {
-  return JSON.stringify(d, null, "--");
-}
-
 function printTeam(team: Team): string {
   if (team.players.length === 1) {
     return team.players[0];
@@ -275,27 +270,4 @@ function printMatch(match: Match): string {
   return match.teams
     .map((team) => `${team.players.join(" e ")} (${team.roundsWon})`)
     .join(" x ");
-}
-
-function download() {
-  const html = HtmlService.createHtmlOutputFromFile("index");
-  SpreadsheetApp.getUi().showModalDialog(html, "Baixar estatísticas");
-}
-
-function downloadFile() {
-  // const obj = generateStats();
-  const obj = {};
-
-  const filename = "data.json";
-  const blob = Utilities.newBlob(
-    JSON.stringify(obj),
-    "application/json",
-    filename
-  );
-  return {
-    data: `data:application/json;base64,${Utilities.base64Encode(
-      blob.getBytes()
-    )}`,
-    filename: filename,
-  };
 }
