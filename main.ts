@@ -266,10 +266,24 @@ function updateStats() {
         getTeamMode(match),
         isTwolala(match) ? "Twolala" : "",
         match.isWO ? "WO" : "",
+        [
+          "Janeiro",
+          "Fevereiro",
+          "Março",
+          "Abril",
+          "Maio",
+          "Junho",
+          "Julho",
+          "Agosto",
+          "Setembro",
+          "Outubro",
+          "Novembro",
+          "Dezembro",
+        ][row[0].getMonth()],
       ];
     });
   sheet
-    .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 9)
+    .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 10)
     .setValues(values);
 }
 
