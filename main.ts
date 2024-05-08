@@ -86,6 +86,12 @@ function getMatchResults(row: any[], rowNumber?: number): Match {
   }
 
   match.winners = getWinners(match);
+  const oldWinners = getWinners_DEPRECATED(match);
+  if (match.winners.sort().join(", ") !== oldWinners.sort().join(", ")) {
+    console.log(
+      `Winners mismatch on match "${match.raw}". New approach: ${match.winners}, old approach: ${oldWinners}`
+    );
+  }
   match.losers = getLosers(match);
 
   return match;
@@ -111,6 +117,16 @@ function toStage(rawStage: string): Stage {
 }
 
 function getWinners(match: Match): string[] {
+  const maxRoundsWon = Math.max(...match.teams.map((team) => team.roundsWon));
+  const minRoundsWon = Math.min(...match.teams.map((team) => team.roundsWon));
+  return maxRoundsWon === minRoundsWon && !match.isWO
+    ? []
+    : match.teams
+        .filter((team) => team.roundsWon === maxRoundsWon)
+        .flatMap((team) => team.players);
+}
+
+function getWinners_DEPRECATED(match: Match): string[] {
   return match.teams.reduce((prev, curr) => {
     // Assuming draws will never happen...
     return curr.roundsWon > prev.roundsWon ? curr : prev;
