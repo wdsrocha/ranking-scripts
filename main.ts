@@ -86,12 +86,6 @@ function getMatchResults(row: any[], rowNumber?: number): Match {
   }
 
   match.winners = getWinners(match);
-  const oldWinners = getWinners_DEPRECATED(match);
-  if (match.winners.sort().join(", ") !== oldWinners.sort().join(", ")) {
-    console.log(
-      `Winners mismatch on match "${match.raw}". New approach: ${match.winners}, old approach: ${oldWinners}`
-    );
-  }
   match.losers = getLosers(match);
 
   return match;
@@ -124,13 +118,6 @@ function getWinners(match: Match): string[] {
     : match.teams
         .filter((team) => team.roundsWon === maxRoundsWon)
         .flatMap((team) => team.players);
-}
-
-function getWinners_DEPRECATED(match: Match): string[] {
-  return match.teams.reduce((prev, curr) => {
-    // Assuming draws will never happen...
-    return curr.roundsWon > prev.roundsWon ? curr : prev;
-  }, match.teams[0]).players;
 }
 
 // Many teams can lose at the same time. For the sake of simplicity, this
