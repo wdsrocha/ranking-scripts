@@ -188,12 +188,12 @@ function isTwolala(match: Match): boolean {
 function updateStats() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("Batalhas")!;
-  const data = sheet.getDataRange().getValues();
+  const range = sheet.getDataRange();
+  const data = range.getValues();
 
   const matches: Match[] = data
     .map((row, index) => ({ row, index }))
     .slice(1)
-    .filter((x) => x.row[0].getMonth() === 3) // 0-indexed
     .map((x) => getMatchResults(x.row, x.index + 1));
 
   const tournamentSheet = ss.getSheetByName("Edições");
@@ -234,7 +234,17 @@ function updateStats() {
 
   console.log(warnings.sort().join("\n"));
 
-  reloadPlayerSheet(ss.getSheetByName("MCs")!, matches);
+  reloadPlayerSheet(ss.getSheetByName("MCs (2024)")!, matches);
+  reloadPlayerSheet(
+    ss.getSheetByName("MCs (mês atual)")!,
+    matches.filter((match) => match.date.getMonth() === new Date().getMonth())
+  );
+  reloadPlayerSheet(
+    ss.getSheetByName("MCs (mês passado)")!,
+    matches.filter(
+      (match) => match.date.getMonth() === new Date().getMonth() - 1
+    )
+  );
   reloadTournamentSheet(ss.getSheetByName("Edições")!, matches);
   reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
 

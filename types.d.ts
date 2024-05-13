@@ -6,7 +6,7 @@ interface Team {
 interface Match {
   raw: string;
   host: string;
-  date: string;
+  date: Date;
   stage: Stage;
   teams: Team[];
   isWO?: boolean;
@@ -23,7 +23,7 @@ interface Player {
 interface Tournament {
   id: string;
   host: string;
-  date: string;
+  date: Date;
   champions: string[];
   runnersUp: string[];
   matches: Match[];
