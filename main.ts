@@ -328,10 +328,10 @@ function calculateMatchScore(
 
   let loserScore = 0;
 
-  if (match.mode === "Duo") {
-    winnerScore = Math.ceil(winnerScore / 2);
-    clarification += `\nBatalha de Dupla: Pontuação dividida por 2 e arredondada para cima\n`;
-  }
+  // if (match.mode === "Duo") {
+  //   winnerScore = Math.ceil(winnerScore / 2);
+  //   clarification += `\nBatalha de Dupla: Pontuação dividida por 2 e arredondada para cima\n`;
+  // }
 
   let underdogVictory = false;
   if (match.mode === "Solo" && !match.isWO) {
