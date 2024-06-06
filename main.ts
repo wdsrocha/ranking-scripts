@@ -149,10 +149,10 @@ function main() {
       .sort(function comparePlayers(a: Player, b: Player) {
         if (a.score != b.score) {
           return b.score - a.score;
-        } else if (a.twolala != b.twolala) {
-          return b.twolala - a.twolala;
         } else if (a.titles != b.titles) {
           return b.titles - a.titles;
+        } else if (a.twolala != b.twolala) {
+          return b.twolala - a.twolala;
         } else if (a.participation != b.participation) {
           return a.participation - b.participation;
         } else {
