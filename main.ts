@@ -187,101 +187,56 @@ function isTwolala(match: Match): boolean {
 
 function updateStats() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Batalhas")!;
+  const sheet = ss.getSheetByName("Edições")!;
   const range = sheet.getDataRange();
   const data = range.getValues();
 
   const matches: Match[] = data
     .map((row, index) => ({ row, index }))
     .slice(1)
-    .map((x) => getMatchResults(x.row, x.index + 1));
+    .filter((x) => x.row[2] !== "" || x.row[3] !== "") // Teve?
+    .map((x) => {
+      const champion = x.row[2];
+      const runnerUp = x.row[3];
 
-  const tournamentSheet = ss.getSheetByName("Edições");
-  if (!tournamentSheet) {
-    throw new Error("Sheet 'Edições' not found");
-  }
+      const championTeam: Team = {
+        players: champion
+          .split(", ") // Handle trio
+          .join(" e ") // Handle trio
+          .split(" e ")
+          .map((s) => s.trim()),
+        roundsWon: 1,
+      };
 
-  const tournamentData = tournamentSheet.getDataRange().getValues();
-  const tournaments: Tournament[] = tournamentData.slice(1).map((row) => ({
-    id: getTournamentId(row[0], row[1]),
-    date: row[0],
-    host: row[1],
-    champions: row[2],
-    runnersUp: row[3],
-    matches: [],
-    isMissingMatches: row.find((cell) => cell === "FALTA") !== undefined,
-  }));
+      const runnerUpTeam: Team = {
+        players: runnerUp
+          .split(", ") // Handle trio
+          .join(" e ") // Handle trio
+          .split(" e ")
+          .map((s) => s.trim()),
+        roundsWon: 0,
+      };
 
-  const warnings: string[] = [];
-  // Appears on Tournament Sheet but not on Match Sheet
-  for (const tournament of tournaments.filter((t) => !t.isMissingMatches)) {
-    const found = matches.find((match) => match.tournamentId === tournament.id);
-    if (!found) {
-      warnings.push(`${tournament.id.padEnd(50)} | Batalhas ❌ | Edições ✅`);
-    }
-  }
+      const date = x.row[1].toISOString().split("T")[0];
 
-  // Appears on Matches Sheet but not on Tournament Sheet
-  const tournamentIdsFromMatches = Array.from(
-    new Set(matches.map((match) => match.tournamentId))
-  ).sort();
-  for (const id of tournamentIdsFromMatches) {
-    const found = tournaments.find((tournament) => id === tournament.id);
-    if (!found) {
-      warnings.push(`${id.padEnd(50)} | Batalhas ✅ | Edições ❌`);
-    }
-  }
-
-  console.log(warnings.sort().join("\n"));
-
-  reloadPlayerSheet(ss.getSheetByName("MCs (2024)")!, matches);
-  reloadPlayerSheet(
-    ss.getSheetByName("MCs (mês atual)")!,
-    matches.filter((match) => match.date.getMonth() === new Date().getMonth())
-  );
-  reloadPlayerSheet(
-    ss.getSheetByName("MCs (mês passado)")!,
-    matches.filter(
-      (match) => match.date.getMonth() === new Date().getMonth() - 1
-    )
-  );
-  reloadTournamentSheet(ss.getSheetByName("Edições")!, matches);
-  reloadHostSheet(ss.getSheetByName("Organizações")!, matches);
-
-  const values = sheet
-    .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 4)
-    .getValues()
-    .map((row) => {
-      const match = getMatchResults(row);
-      return [
-        row[0],
-        row[1],
-        row[2],
-        row[3],
-        playersToString(match.winners),
-        playersToString(match.losers),
-        getTeamMode(match),
-        isTwolala(match) ? "Twolala" : "",
-        match.isWO ? "WO" : "",
-        [
-          "Janeiro",
-          "Fevereiro",
-          "Março",
-          "Abril",
-          "Maio",
-          "Junho",
-          "Julho",
-          "Agosto",
-          "Setembro",
-          "Outubro",
-          "Novembro",
-          "Dezembro",
-        ][row[0].getMonth()],
-      ];
+      return {
+        date: x.row[1],
+        host: "Batalha da Malta",
+        stage: Stage.Finals,
+        raw: `${champion}* x ${runnerUp}`,
+        isWO: false,
+        tournamentId: date,
+        teams: [championTeam, runnerUpTeam],
+        winners: championTeam.players,
+        losers: runnerUpTeam.players,
+      };
     });
-  sheet
-    .getRange(2, 1, sheet.getDataRange().getLastRow() - 1, 10)
-    .setValues(values);
+
+  matches.slice(0, 10).forEach((match) => {
+    console.log(`${match.tournamentId}: ${printMatch(match)}`);
+  });
+
+  reloadPlayerSheet(ss.getSheetByName("Campeões")!, matches);
 }
 
 function printTeam(team: Team): string {

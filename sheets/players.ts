@@ -172,68 +172,49 @@ function reloadPlayerSheet(
     ((range: GoogleAppsScript.Spreadsheet.Range) => void)?
   ][] = [
     ["Vulgo", (p) => p.nickname],
-    ["Edições", countTournaments],
     [
-      "Finais",
-      (p) => p.matches.filter((match) => match.stage === Stage.Finals).length,
+      "Campeão",
+      (p) => p.matches.filter((m) => m.winners.includes(p.nickname)).length,
     ],
-    ["Folhinhas", (p) => p.countByPosition["Campeão"]],
-    ["Vice", (p) => p.countByPosition["Vice"]],
-    ["Semifinais", (p) => p.countByPosition["Semifinal"]],
     [
-      "1ª e 2ª Fase",
+      "Vice",
+      (p) => p.matches.filter((m) => m.losers.includes(p.nickname)).length,
+    ],
+    [
+      "Campeão (solo)",
       (p) =>
-        p.countByPosition["Segunda Fase"] + p.countByPosition["Primeira Fase"],
-    ],
-    ["Batalhas", (p) => p.matches.length],
-    ["Vitórias", (p) => p.totalWins],
-    ["Derrotas", (p) => p.matches.length - p.totalWins],
-    ["Twolalas", (p) => p.twolala],
-    [
-      "Vitórias / Batalhas",
-      (p) => (p.matches.length ? p.totalWins / p.matches.length : 0),
-      (range) => range.setNumberFormat("00.00%"),
+        p.matches.filter(
+          (m) => m.winners.includes(p.nickname) && isSoloMatch(m)
+        ).length,
     ],
     [
-      "Twolala / Vitória",
-      (p) => (p.matches.length ? p.twolala / p.totalWins : 0),
-      (range) => range.setNumberFormat("00.00%"),
+      "Batalhas",
+      (p) =>
+        p.matches
+          .map((m) => `${m.date.toISOString().split("T")[0]} | ${m.raw}`)
+          .join("\n"),
     ],
-    [
-      "Folhinhas / Edições",
-      (p) => (countTournaments(p) ? p.titles / countTournaments(p) : 0),
-      (range) => range.setNumberFormat("00.00%"),
-    ],
-    // ["Batalha mais frequentada", (p) => countFavoriteHost(p)[0]],
-    // ["Edições na Batalha mais frequentada", (p) => countFavoriteHost(p)[1]],
-    // ["Oponentes diferentes", countDistinctFoes],
-    ["Rival", (p) => getRival(p)[0]],
-    ["Batalhas travadas com rival", (p) => getRival(p)[1]],
   ];
 
   const playerTable = Object.values(players)
     .sort((a, b) => {
       if (a.titles !== b.titles) {
         return b.titles - a.titles;
-      } else if (a.countByPosition["Vice"] !== b.countByPosition["Vice"]) {
+      }
+
+      const aSoloTitles = a.matches.filter(
+        (m) => m.winners.includes(a.nickname) && isSoloMatch(m)
+      ).length;
+      const bSoloTitles = b.matches.filter(
+        (m) => m.winners.includes(b.nickname) && isSoloMatch(m)
+      ).length;
+
+      if (aSoloTitles !== bSoloTitles) {
+        return bSoloTitles - aSoloTitles;
+      }
+
+      if (a.countByPosition["Vice"] !== b.countByPosition["Vice"]) {
         return b.countByPosition["Vice"] - a.countByPosition["Vice"];
-      } else if (
-        a.countByPosition["Semifinal"] !== b.countByPosition["Semifinal"]
-      ) {
-        return b.countByPosition["Semifinal"] - a.countByPosition["Semifinal"];
-      } else if (
-        a.countByPosition["Primeira Fase"] +
-          a.countByPosition["Segunda Fase"] !==
-        b.countByPosition["Primeira Fase"] + b.countByPosition["Segunda Fase"]
-      ) {
-        return (
-          b.countByPosition["Primeira Fase"] +
-          b.countByPosition["Segunda Fase"] -
-          (a.countByPosition["Primeira Fase"] +
-            a.countByPosition["Segunda Fase"])
-        );
-      } else if (a.matches.length !== b.matches.length) {
-        return b.matches.length - a.matches.length;
       } else {
         return a.nickname.localeCompare(b.nickname);
       }
