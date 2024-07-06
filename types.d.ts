@@ -13,6 +13,7 @@ interface Player {
 interface Team {
   players: string[]; // nickname
   roundsWon: number;
+  tournamentTeam?: string; // in case the tournament is a team tournament
 }
 
 type Mode = "Solo" | "Duo" | "Trio" | "Double-Three";

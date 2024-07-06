@@ -40,6 +40,9 @@ function parseMatchResults(
   const isWO = raw.includes("(WO)");
   raw = raw.replace("(WO)", "").trim();
 
+  const tournamentTeams = raw.match(/\((.*?)\)/g)?.map((x) => x[1]) || [];
+  raw = raw.replace(/\(.*?\)/g, "").trim();
+
   if (!raw.includes(" x ")) {
     // Cases where there was not sufficient MCs or something, so the match was
     // marked as WO, but we don't know who was supposed to be the opponent
@@ -74,7 +77,7 @@ function parseMatchResults(
     // Use the extracted groups in your code
     const roundsResult = [roundsWon1, roundsWon2];
 
-    const teams = raw.split(versus!).map((team, i) => ({
+    const teams: Team[] = raw.split(versus!).map((team, i) => ({
       players: team
         .split(", ") // Handle trio
         .join(" e ") // Handle trio
@@ -82,6 +85,11 @@ function parseMatchResults(
         .map((s) => s.trim()),
       roundsWon: parseInt(roundsResult[i]),
     }));
+
+    if (tournamentTeams.length === 2) {
+      teams[0].tournamentTeam = tournamentTeams[0];
+      teams[1].tournamentTeam = tournamentTeams[1];
+    }
 
     return {
       isWO,

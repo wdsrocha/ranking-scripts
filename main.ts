@@ -2,6 +2,7 @@ const MATCHES_SHEET = "Batalhas";
 
 enum Stage {
   Unknown = "Fase desconhecida",
+  TeamMode = "Modo de times",
   EightFinals = "Oitavas de final",
   QuarterFinals = "Quartas de final",
   SemiFinals = "Semifinal",
@@ -122,6 +123,39 @@ function main() {
           `-1 para ${player.nickname} pois faltou na rodada ${id} enquanto estava no Top 4 (posição ${player.position})`
         );
       });
+
+    // It's a team tournament
+    // Every player from the winning team must receive a point
+    if (
+      matches[0].teams[0].tournamentTeam ||
+      matches[0].stage === Stage.TeamMode
+    ) {
+      const lastMatch = matches[matches.length - 1];
+      const winnerTeam = lastMatch.teams.find((team) =>
+        team.players.includes(lastMatch.winners[0])
+      );
+      const winnerTournamentTeam = winnerTeam?.tournamentTeam;
+
+      const winners: Set<string> = new Set();
+      matches.forEach((match) => {
+        match.teams.forEach((team) => {
+          if (team.tournamentTeam === winnerTournamentTeam) {
+            team.players.forEach((nickname) => {
+              winners.add(nickname);
+            });
+          }
+        });
+      });
+
+      winners.forEach((nickname) => {
+        const player = players[nickname];
+        player.score += 1;
+        player.scoreByTournament[id] += 1;
+        console.log(
+          `+1 para ${player.nickname} pois fez parte do time vencedor (${winnerTournamentTeam}) na rodada ${id}`
+        );
+      });
+    }
 
     // SCORE VALIDATION
     Object.values(players).forEach((player) => {
@@ -313,6 +347,9 @@ function calculateMatchScore(
     throw new Error(
       `Não foi possível calcular o score da batalha "${match.raw}" pois a fase "${match.stage}" é desconhecida.`
     );
+  } else if (match.stage === Stage.TeamMode) {
+    winnerScore += 1;
+    clarification += `${winners}: +1\n`;
   } else if (match.stage === Stage.EightFinals) {
     winnerScore += 1;
     clarification += `${winners}: +1\n`;
@@ -334,7 +371,11 @@ function calculateMatchScore(
   // }
 
   let underdogVictory = false;
-  if (match.mode === "Solo" && !match.isWO) {
+  if (
+    match.mode === "Solo" &&
+    !match.isWO &&
+    !(match.stage === Stage.TeamMode)
+  ) {
     const winnerRating = lastTournamentScores[match.winners[0]].score;
     const loserRating = lastTournamentScores[match.losers[0]].score;
     if (winnerRating < loserRating) {
@@ -391,6 +432,8 @@ function toStage(rawStage: string): Stage {
     return Stage.SemiFinals;
   } else if (rawStage === "final") {
     return Stage.Finals;
+  } else if (rawStage === "fase única") {
+    return Stage.TeamMode;
   } else {
     return Stage.Unknown;
   }
