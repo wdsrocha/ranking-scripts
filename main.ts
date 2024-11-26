@@ -97,7 +97,8 @@ function updateStats() {
   const matches: Match[] = data
     .map((row, index) => ({ row, index }))
     .slice(1)
-    .filter((x) => x.row[2] !== "" || x.row[3] !== "") // Teve?
+    // Somente se tiver número de edição e um campeão declarado
+    .filter((x) => x.row[4] !== "" && x.row[2] !== "")
     .map((x) => {
       const champion = x.row[2];
       const runnerUp = x.row[3];
@@ -120,6 +121,12 @@ function updateStats() {
         roundsWon: 0,
       };
 
+      const judges = x.row[12]
+        .split(", ")
+        .join(" e ")
+        .split(" e ")
+        .map((s) => s.trim());
+
       const date = x.row[1].toISOString().split("T")[0];
 
       return {
@@ -132,6 +139,7 @@ function updateStats() {
         teams: [championTeam, runnerUpTeam],
         winners: championTeam.players,
         losers: runnerUpTeam.players,
+        judges,
       };
     });
 
@@ -139,7 +147,11 @@ function updateStats() {
     console.log(`${match.tournamentId}: ${printMatch(match)}`);
   });
 
+  const matches2024 = matches.filter((m) => m.date.getFullYear() === 2024);
+
   reloadPlayerSheet(ss.getSheetByName("Campeões")!, matches);
+  reloadPlayerSheet(ss.getSheetByName("Campeões 2024")!, matches2024);
+  reloadJudgesSheet(ss.getSheetByName("Jurados 2024")!, matches2024);
 }
 
 function printTeam(team: Team): string {

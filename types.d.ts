@@ -13,6 +13,7 @@ interface Match {
   tournamentId: string;
   winners: string[];
   losers: string[];
+  judges: string[];
 }
 
 interface Player {
@@ -37,4 +38,9 @@ interface PlayerData extends Player {
   winRate: number;
   tournamentIds: string[]; // tournament key `${date} | ${host}`
   countByPosition: Record<TournamentPosition, number>;
+}
+
+interface JudgeData {
+  nickname: string;
+  participationCount: number;
 }
