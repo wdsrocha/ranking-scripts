@@ -8,6 +8,17 @@ function getTournamentId(date: Date, host: string) {
   return `${simpleDate}-${simpleHost}`;
 }
 
+function groupMatchesByTournament(matches: Match[]): Record<string, Match[]> {
+  return matches.reduce<Record<string, Match[]>>((prev, curr) => {
+    const id = curr.tournamentId;
+    if (!(id in prev)) {
+      prev[id] = [];
+    }
+    prev[id].push(curr);
+    return prev;
+  }, {});
+}
+
 function reloadPlayerSheet(
   sheet: GoogleAppsScript.Spreadsheet.Sheet,
   matches: Match[]
